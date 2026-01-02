@@ -13,32 +13,32 @@ Add these variables to your Vercel project in the **Vars** section of the in-cha
 
 ### Required Variables
 
-```
+\`\`\`
 NEXT_PUBLIC_SITE_URL=https://your-domain.com
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<your-supabase-service-role-key>
 SUPABASE_JWT_SECRET=<your-supabase-jwt-secret>
-```
+\`\`\`
 
 ### Paystack Variables
 
-```
+\`\`\`
 NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=<your-paystack-public-key>
 PAYSTACK_SECRET_KEY=<your-paystack-secret-key>
-```
+\`\`\`
 
 ### Email Service Variables (Choose one)
 
 **For Resend:**
-```
+\`\`\`
 RESEND_API_KEY=<your-resend-api-key>
-```
+\`\`\`
 
 **For SendGrid:**
-```
+\`\`\`
 SENDGRID_API_KEY=<your-sendgrid-api-key>
-```
+\`\`\`
 
 ## 2. Database Setup
 
@@ -74,7 +74,7 @@ The database schema is already configured in the Supabase integration. The follo
 2. Create a domain and get your API key
 3. Update `lib/email.ts` to use Resend:
 
-```typescript
+\`\`\`typescript
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -87,7 +87,7 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
     html,
   });
 }
-```
+\`\`\`
 
 ### Using SendGrid
 
@@ -98,11 +98,11 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
 ## 5. Deployment to Vercel
 
 1. **Push to GitHub** (if not already done):
-   ```bash
+   \`\`\`bash
    git add .
    git commit -m "Add Paystack integration and withdrawal system"
    git push origin main
-   ```
+   \`\`\`
 
 2. **Deploy to Vercel**:
    - Visit https://vercel.com

@@ -21,9 +21,9 @@ Example: `f47ac10b-58cc-4372-a567-0e02b2c3d479`
 
 1. Open the file `scripts/02-seed-demo-data.sql`
 2. Find this line near the top:
-   ```sql
+   \`\`\`sql
    demo_user_id UUID := 'f47ac10b-58cc-4372-a567-0e02b2c3d479'::uuid; -- REPLACE WITH ACTUAL USER ID
-   ```
+   \`\`\`
 3. Replace `f47ac10b-58cc-4372-a567-0e02b2c3d479` with the User ID you copied
 4. Save the file
 
@@ -38,9 +38,9 @@ Example: `f47ac10b-58cc-4372-a567-0e02b2c3d479`
 6. You should see: "Demo user data seeded successfully!"
 
 ### Option B: Using Command Line (if you have Supabase CLI)
-```bash
+\`\`\`bash
 supabase db push scripts/02-seed-demo-data.sql
-```
+\`\`\`
 
 ## Step 5: Login to Dashboard
 
