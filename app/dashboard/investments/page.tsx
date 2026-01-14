@@ -14,23 +14,55 @@ export default function InvestmentsPage() {
   const { profile, loading: profileLoading } = useUserProfile()
   const [investments, setInvestments] = useState<Investment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadInvestments() {
-      if (profile?.id) {
+      if (!profile?.id) return
+
+      try {
+        console.log("[v0] Loading investments for user:", profile.id)
         const data = await getUserInvestments(profile.id)
+        console.log("[v0] Investments loaded:", data.length)
         setInvestments(data)
+      } catch (err) {
+        console.error("[v0] Error loading investments:", err)
+        setError("Failed to load investments")
+      } finally {
         setLoading(false)
       }
     }
-    loadInvestments()
+
+    if (profile?.id) {
+      loadInvestments()
+    }
   }, [profile?.id])
 
   if (profileLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <DashboardLayout profile={profile}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading investments...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout profile={profile}>
+        <div className="min-h-screen flex items-center justify-center">
+          <Card className="max-w-md">
+            <CardContent className="pt-6 text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>Retry</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
     )
   }
 
@@ -38,6 +70,8 @@ export default function InvestmentsPage() {
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
       currency: "NGN",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amount)
   }
 
@@ -51,6 +85,10 @@ export default function InvestmentsPage() {
         return "No Lock"
     }
   }
+
+  const totalInvested = investments.reduce((sum, inv) => sum + Number(inv.principal || 0), 0)
+  const totalReturns = investments.reduce((sum, inv) => sum + Number(inv.total_returns || 0), 0)
+  const activeCount = investments.filter((inv) => inv.status === "active").length
 
   return (
     <DashboardLayout profile={profile}>
@@ -69,9 +107,7 @@ export default function InvestmentsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Invested</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(investments.reduce((sum, inv) => sum + Number(inv.principal || 0), 0))}
-              </div>
+              <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
             </CardContent>
           </Card>
 
@@ -80,9 +116,7 @@ export default function InvestmentsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Returns</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(investments.reduce((sum, inv) => sum + Number(inv.total_returns || 0), 0))}
-              </div>
+              <div className="text-2xl font-bold text-green-600">{formatCurrency(totalReturns)}</div>
             </CardContent>
           </Card>
 
@@ -91,7 +125,7 @@ export default function InvestmentsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Active Investments</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{investments.filter((inv) => inv.status === "active").length}</div>
+              <div className="text-2xl font-bold">{activeCount}</div>
             </CardContent>
           </Card>
         </div>
@@ -152,9 +186,9 @@ export default function InvestmentsPage() {
                   </div>
 
                   {new Date(investment.returns_start_at) > new Date() && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                      Returns will start accruing on {new Date(investment.returns_start_at).toLocaleDateString()}
-                      (4 months after approval)
+                    <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-blue-800 dark:text-blue-200">
+                      Returns will start accruing on {new Date(investment.returns_start_at).toLocaleDateString()} (4
+                      months after approval)
                     </div>
                   )}
                 </CardContent>

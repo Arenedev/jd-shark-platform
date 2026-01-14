@@ -34,24 +34,44 @@ export default function AdminDashboard() {
   }, [])
 
   async function checkAuth() {
+    console.log("[v0] Admin: Starting auth check")
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
+    console.log("[v0] Admin: Session check", !!session)
+
     if (!session) {
+      console.log("[v0] Admin: No session, redirecting to login")
       router.push("/auth/login")
       return
     }
 
-    // Check if user is admin
-    const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", session.user.id).single()
+    try {
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", session.user.id)
+        .single()
 
-    if (!profile?.is_admin) {
-      router.push("/dashboard")
-      return
+      console.log("[v0] Admin: Profile check", { hasProfile: !!profile, isAdmin: profile?.is_admin, error })
+
+      if (error) {
+        console.error("[v0] Admin: Error checking profile", error)
+        return
+      }
+
+      if (!profile?.is_admin) {
+        console.log("[v0] Admin: Not an admin, redirecting to dashboard")
+        router.push("/dashboard")
+        return
+      }
+
+      console.log("[v0] Admin: Authorized, loading data")
+      fetchData()
+    } catch (error) {
+      console.error("[v0] Admin: Exception during auth check", error)
     }
-
-    fetchData()
   }
 
   async function fetchData() {
