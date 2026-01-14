@@ -3,6 +3,15 @@
 -- This script combines all phases 1-5 for easy deployment
 -- ============================================
 
+-- Add is_admin column to profiles table first, before any policies reference it
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS base_structure TEXT CHECK (base_structure IN ('investor', 'organization', 'associate')),
+ADD COLUMN IF NOT EXISTS current_rank TEXT,
+ADD COLUMN IF NOT EXISTS personal_capital DECIMAL(15,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS network_capital DECIMAL(15,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS returns_balance DECIMAL(15,2) DEFAULT 0;
+
 -- PHASE 1: Investment & Returns Foundation
 -- ============================================
 
@@ -22,7 +31,9 @@ VALUES ('base_roi_percentage', '10', 'Base monthly ROI percentage for investment
 ON CONFLICT (config_key) DO NOTHING;
 
 -- Update investments table for Phase 1
+-- Add user_id column to investments table for direct user reference
 ALTER TABLE public.investments
+ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
 ADD COLUMN IF NOT EXISTS principal DECIMAL(15,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS returns_start_at TIMESTAMPTZ,
@@ -34,6 +45,13 @@ ADD COLUMN IF NOT EXISTS total_returns DECIMAL(15,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS last_return_date TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS next_return_date TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS maturity_date TIMESTAMPTZ;
+
+-- Update existing investments to set user_id from portfolio owner
+UPDATE public.investments i
+SET user_id = p.owner_id
+FROM public.portfolios p
+WHERE i.portfolio_id = p.id
+AND i.user_id IS NULL;
 
 -- Monthly returns tracking
 CREATE TABLE IF NOT EXISTS public.monthly_returns (
@@ -72,15 +90,11 @@ CREATE TABLE IF NOT EXISTS public.deposit_requests (
 -- PHASE 2: Personal Capital & Withdrawals
 -- ============================================
 
--- Add returns_balance to profiles
-ALTER TABLE public.profiles
-ADD COLUMN IF NOT EXISTS returns_balance DECIMAL(15,2) DEFAULT 0;
-
 -- Update wallets for PC tracking
 ALTER TABLE public.wallets
 ADD COLUMN IF NOT EXISTS personal_capital DECIMAL(15,2) DEFAULT 0;
 
--- Create user_balances view
+-- Fixed user_balances view to use correct column names
 CREATE OR REPLACE VIEW public.user_balances AS
 SELECT 
   p.id as user_id,
