@@ -58,6 +58,12 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             icon="📈"
             isActive={pathname.includes("/investments")}
           />
+          <NavLink
+            href="/dashboard/network"
+            label="Network & Ranks"
+            icon="🏆"
+            isActive={pathname.includes("/network")}
+          />
           <NavLink href="/dashboard/referrals" label="Referrals" icon="👥" isActive={pathname.includes("/referrals")} />
           <NavLink href="/dashboard/settings" label="Settings" icon="⚙️" isActive={pathname.includes("/settings")} />
         </nav>
@@ -122,6 +128,13 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               label="Investments"
               icon="📈"
               isActive={pathname.includes("/investments")}
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <NavLink
+              href="/dashboard/network"
+              label="Network & Ranks"
+              icon="🏆"
+              isActive={pathname.includes("/network")}
               onClick={() => setMobileMenuOpen(false)}
             />
             <NavLink

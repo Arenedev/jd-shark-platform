@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { canWithdraw } from "@/lib/api/balances"
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,10 +24,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Minimum withdrawal is ₦1,000" }, { status: 400 })
     }
 
+    const withdrawalCheck = await canWithdraw(session.user.id, amount)
+
+    if (!withdrawalCheck.canWithdraw) {
+      return NextResponse.json({ error: withdrawalCheck.reason || "Cannot withdraw" }, { status: 400 })
+    }
+
     // Get user's wallet
     const { data: wallet, error: walletError } = await supabase
       .from("wallets")
-      .select("id, balance")
+      .select("id, balance, returns_balance")
       .eq("user_id", session.user.id)
       .single()
 
@@ -34,11 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Wallet not found" }, { status: 404 })
     }
 
-    if (wallet.balance < amount) {
-      return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
-    }
-
-    // Create withdrawal request
+    // Create withdrawal request (from returns only)
     const { data: withdrawal, error: withdrawalError } = await supabase
       .from("withdrawal_requests")
       .insert({
@@ -49,6 +52,7 @@ export async function POST(request: NextRequest) {
         account_number: accountNumber,
         account_name: accountName,
         status: "pending",
+        withdrawal_source: "returns", // Always from returns in Phase 2
       })
       .select()
       .single()

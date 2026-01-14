@@ -19,11 +19,6 @@ export default function Home() {
             <span className="font-bold text-xl text-primary">SHARK</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/admin">
-              <Button variant="ghost" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                Admin
-              </Button>
-            </Link>
             <Link href="/auth/login">
               <Button
                 variant="outline"

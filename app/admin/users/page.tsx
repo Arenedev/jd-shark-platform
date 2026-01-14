@@ -18,7 +18,6 @@ export default async function AdminUsersPage() {
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-  // Fetch all users
   const { data: users } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
 
   // Fetch wallet data for users
@@ -43,7 +42,8 @@ export default async function AdminUsersPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Username</TableHead>
+                  <TableHead>Base Structure</TableHead>
+                  <TableHead>Rank</TableHead>
                   <TableHead>KYC Status</TableHead>
                   <TableHead>Wallet Balance</TableHead>
                   <TableHead>Joined</TableHead>
@@ -56,7 +56,16 @@ export default async function AdminUsersPage() {
                     <TableRow key={usr.id}>
                       <TableCell className="font-medium">{usr.full_name || "Unknown"}</TableCell>
                       <TableCell>{usr.email}</TableCell>
-                      <TableCell>{usr.username}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">
+                          {usr.base_structure || "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize">
+                          {usr.current_rank || "Unranked"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           className={

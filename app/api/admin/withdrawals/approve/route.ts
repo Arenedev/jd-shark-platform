@@ -12,8 +12,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // TODO: Add admin role check
-    // For now, any authenticated user can approve (should be restricted to admins)
+    const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", session.user.id).single()
+
+    if (!profile?.is_admin) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    }
 
     const body = await request.json()
     const { withdrawalId, status, adminNote } = body
@@ -57,13 +60,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to update withdrawal" }, { status: 500 })
     }
 
-    // If approved, deduct from wallet and create transaction
     if (status === "approved") {
-      // Deduct from wallet
+      // Check returns balance is sufficient
+      const currentReturnsBalance = withdrawal.wallets.returns_balance || 0
+
+      if (currentReturnsBalance < withdrawal.amount) {
+        return NextResponse.json(
+          {
+            error: "Insufficient returns balance. This should not happen - withdrawal was validated.",
+          },
+          { status: 400 },
+        )
+      }
+
+      // Deduct from returns_balance only (PC remains locked)
       const { error: walletError } = await supabase
         .from("wallets")
         .update({
-          balance: withdrawal.wallets.balance - withdrawal.amount,
+          returns_balance: currentReturnsBalance - withdrawal.amount,
+          balance: withdrawal.wallets.balance - withdrawal.amount, // Also deduct from total balance
           total_withdrawn: (withdrawal.wallets.total_withdrawn || 0) + withdrawal.amount,
         })
         .eq("id", withdrawal.wallet_id)
@@ -79,8 +94,14 @@ export async function POST(request: NextRequest) {
         type: "withdrawal",
         amount: withdrawal.amount,
         status: "completed",
-        description: `Withdrawal to ${withdrawal.bank_name} - ${withdrawal.account_number}`,
+        description: `Withdrawal from returns to ${withdrawal.bank_name} - ${withdrawal.account_number}`,
         reference: `WD-${withdrawalId.substring(0, 8).toUpperCase()}`,
+        metadata: {
+          source: "returns",
+          bank_name: withdrawal.bank_name,
+          account_number: withdrawal.account_number,
+          account_name: withdrawal.account_name,
+        },
       })
 
       if (transactionError) {

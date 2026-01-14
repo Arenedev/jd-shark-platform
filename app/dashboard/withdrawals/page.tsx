@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { Upload } from "lucide-react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -14,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useWallet } from "@/hooks/use-wallet"
+import { getUserBalances } from "@/lib/api/balances"
 
 interface WithdrawalRequest {
   id: string
@@ -35,16 +37,18 @@ export default function WithdrawalsPage() {
   const { toast } = useToast()
   const { wallet, loading: walletLoading } = useWallet()
   const [profile, setProfile] = useState<any>(null)
+  const [balances, setBalances] = useState<any>(null)
 
   const [formData, setFormData] = useState({
     amount: "",
     bankName: "",
     accountNumber: "",
     accountName: "",
+    proofOfPaymentUrl: "", // Added proof of payment field
   })
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const loadData = async () => {
       const supabase = createBrowserClient()
       const {
         data: { session },
@@ -60,12 +64,15 @@ export default function WithdrawalsPage() {
 
       setProfile(profileData)
 
+      const userBalances = await getUserBalances(session.user.id)
+      setBalances(userBalances)
+
       // Fetch withdrawals
       await fetchWithdrawals()
       setMounted(true)
     }
 
-    checkAuth()
+    loadData()
   }, [router])
 
   const fetchWithdrawals = async () => {
@@ -98,7 +105,7 @@ export default function WithdrawalsPage() {
         throw new Error("Minimum withdrawal is ₦1,000")
       }
 
-      if (!wallet || amount > wallet.balance) {
+      if (!balances || amount > balances.availableForWithdrawal) {
         throw new Error("Insufficient balance")
       }
 
@@ -110,6 +117,7 @@ export default function WithdrawalsPage() {
           bankName: formData.bankName,
           accountNumber: formData.accountNumber,
           accountName: formData.accountName,
+          proofOfPaymentUrl: formData.proofOfPaymentUrl,
         }),
       })
 
@@ -124,7 +132,7 @@ export default function WithdrawalsPage() {
         description: "Withdrawal request submitted successfully",
       })
 
-      setFormData({ amount: "", bankName: "", accountNumber: "", accountName: "" })
+      setFormData({ amount: "", bankName: "", accountNumber: "", accountName: "", proofOfPaymentUrl: "" })
       await fetchWithdrawals()
     } catch (error) {
       toast({
@@ -153,10 +161,21 @@ export default function WithdrawalsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Request Withdrawal</CardTitle>
-              <CardDescription>Available Balance: ₦{wallet?.balance.toLocaleString() || "0"}</CardDescription>
+              <CardDescription>
+                Returns Balance: ₦{(balances?.returnsBalance || 0).toLocaleString()}
+                <br />
+                Available to Withdraw: ₦{(balances?.availableForWithdrawal || 0).toLocaleString()}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <Alert className="bg-blue-50 border-blue-200">
+                  <AlertDescription className="text-sm text-blue-800">
+                    <strong>Note:</strong> You can only withdraw from your returns balance. Your personal capital (₦
+                    {(balances?.personalCapital || 0).toLocaleString()}) remains locked in investments.
+                  </AlertDescription>
+                </Alert>
+
                 <div>
                   <Label htmlFor="amount">Amount (₦)</Label>
                   <Input
@@ -164,11 +183,14 @@ export default function WithdrawalsPage() {
                     name="amount"
                     type="number"
                     min="1000"
-                    max={wallet?.balance || 0}
+                    max={balances?.availableForWithdrawal || 0}
                     value={formData.amount}
                     onChange={handleChange}
                     required
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum: ₦{(balances?.availableForWithdrawal || 0).toLocaleString()}
+                  </p>
                 </div>
 
                 <div>
@@ -205,6 +227,26 @@ export default function WithdrawalsPage() {
                     placeholder="e.g., John Doe"
                     required
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="proofOfPaymentUrl">Bank Account Proof (Optional)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="proofOfPaymentUrl"
+                      name="proofOfPaymentUrl"
+                      type="url"
+                      value={formData.proofOfPaymentUrl}
+                      onChange={handleChange}
+                      placeholder="https://... (bank statement or account proof)"
+                    />
+                    <Button type="button" variant="outline" size="icon">
+                      <Upload className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Optional: Upload proof of bank account ownership for faster processing
+                  </p>
                 </div>
 
                 <Button type="submit" disabled={submitting} className="w-full">

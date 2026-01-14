@@ -3,18 +3,30 @@
 import type React from "react"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useState } from "react"
+import {
+  LayoutDashboard,
+  Users,
+  CheckCircle,
+  TrendingUp,
+  FileText,
+  Settings,
+  LogOut,
+  DollarSign,
+  Wallet,
+} from "lucide-react"
 
 interface AdminLayoutProps {
   children: React.ReactNode
-  profile: any
+  profile?: any
 }
 
 export default function AdminLayout({ children, profile }: AdminLayoutProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [loading, setLoading] = useState(false)
 
   const handleLogout = async () => {
@@ -27,6 +39,17 @@ export default function AdminLayout({ children, profile }: AdminLayoutProps) {
       setLoading(false)
     }
   }
+
+  const navItems = [
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/users", label: "Manage Users", icon: Users },
+    { href: "/admin/kyc", label: "KYC Verification", icon: CheckCircle },
+    { href: "/admin/deposits", label: "Deposits", icon: DollarSign },
+    { href: "/admin/withdrawals", label: "Withdrawals", icon: Wallet },
+    { href: "/admin/investments", label: "Investments", icon: TrendingUp },
+    { href: "/admin/reports", label: "Reports", icon: FileText },
+    { href: "/admin/settings", label: "Settings", icon: Settings },
+  ]
 
   return (
     <div className="min-h-screen bg-background">
@@ -42,13 +65,25 @@ export default function AdminLayout({ children, profile }: AdminLayoutProps) {
           <p className="text-xs text-muted-foreground mt-2">Admin Panel</p>
         </div>
 
-        <nav className="p-6 space-y-2">
-          <AdminNavLink href="/admin" label="Dashboard" icon="📊" />
-          <AdminNavLink href="/admin/users" label="Manage Users" icon="👥" />
-          <AdminNavLink href="/admin/kyc" label="KYC Verification" icon="✓" />
-          <AdminNavLink href="/admin/investments" label="Investments" icon="📈" />
-          <AdminNavLink href="/admin/reports" label="Reports" icon="📋" />
-          <AdminNavLink href="/admin/settings" label="Settings" icon="⚙️" />
+        <nav className="p-4 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  isActive
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-foreground hover:bg-accent/10 hover:text-accent"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="absolute bottom-6 left-6 right-6">
@@ -58,7 +93,14 @@ export default function AdminLayout({ children, profile }: AdminLayoutProps) {
             variant="outline"
             className="w-full justify-center bg-transparent"
           >
-            {loading ? "Signing out..." : "Sign Out"}
+            {loading ? (
+              "Signing out..."
+            ) : (
+              <>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </>
+            )}
           </Button>
         </div>
       </aside>
@@ -66,17 +108,5 @@ export default function AdminLayout({ children, profile }: AdminLayoutProps) {
       {/* Main Content */}
       <main className="md:ml-64 p-6 lg:p-8">{children}</main>
     </div>
-  )
-}
-
-function AdminNavLink({ href, label, icon }: { href: string; label: string; icon: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-accent/10 hover:text-accent transition-colors"
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
-    </Link>
   )
 }
