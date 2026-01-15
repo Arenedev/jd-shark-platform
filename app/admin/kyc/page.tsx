@@ -1,28 +1,72 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+"use client"
+
+import { useState, useEffect } from "react"
+import { checkAdminSession } from "@/lib/admin-auth"
+import { createClient } from "@/lib/supabase/client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 
-export default async function AdminKYCPage() {
-  const supabase = await createClient()
+export default function AdminKYCPage() {
+  const [loading, setLoading] = useState(true)
+  const [kycUsers, setKycUsers] = useState<any[]>([])
+  const [processing, setProcessing] = useState<string | null>(null)
+  const { toast } = useToast()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  useEffect(() => {
+    if (!checkAdminSession()) {
+      window.location.href = "/admin/login"
+      return
+    }
+    fetchData()
+  }, [])
 
-  if (!user) {
-    redirect("/auth/login")
+  async function fetchData() {
+    const supabase = createClient()
+    const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
+    setKycUsers(data || [])
+    setLoading(false)
   }
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+  async function handleKYCAction(userId: string, status: "approved" | "rejected") {
+    setProcessing(userId)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from("profiles").update({ kyc_status: status }).eq("id", userId)
 
-  // Fetch KYC data
-  const { data: kycUsers } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: `KYC ${status} successfully`,
+      })
+      await fetchData()
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update KYC status",
+      })
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading KYC data...</div>
+        </div>
+      </AdminLayout>
+    )
+  }
 
   return (
-    <AdminLayout profile={profile}>
+    <AdminLayout>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">KYC Verification</h1>
@@ -80,6 +124,7 @@ export default async function AdminKYCPage() {
                   <TableHead>Document</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Submitted</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -115,6 +160,28 @@ export default async function AdminKYCPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{new Date(usr.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {usr.kyc_status === "pending" && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleKYCAction(usr.id, "approved")}
+                            disabled={processing === usr.id}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {processing === usr.id ? "..." : "Approve"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleKYCAction(usr.id, "rejected")}
+                            disabled={processing === usr.id}
+                          >
+                            {processing === usr.id ? "..." : "Reject"}
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

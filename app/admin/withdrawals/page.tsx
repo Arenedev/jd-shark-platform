@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { checkAdminSession } from "@/lib/admin-auth"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -17,7 +18,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 
 interface WithdrawalWithProfile {
   id: string
@@ -45,12 +46,16 @@ export default function AdminWithdrawalsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
+    if (!checkAdminSession()) {
+      window.location.href = "/admin/login"
+      return
+    }
     fetchWithdrawals()
   }, [])
 
   const fetchWithdrawals = async () => {
     try {
-      const supabase = createBrowserClient()
+      const supabase = createClient()
       const { data, error } = await supabase
         .from("withdrawal_requests")
         .select(`
@@ -65,7 +70,7 @@ export default function AdminWithdrawalsPage() {
       if (error) throw error
       setWithdrawals(data || [])
     } catch (error) {
-      console.error("[v0] Error fetching withdrawals:", error)
+      console.error("Error fetching withdrawals:", error)
       toast({
         variant: "destructive",
         title: "Error",
@@ -124,6 +129,16 @@ export default function AdminWithdrawalsPage() {
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending")
   const processedWithdrawals = withdrawals.filter((w) => w.status !== "pending")
 
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading withdrawals...</div>
+        </div>
+      </AdminLayout>
+    )
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -171,9 +186,7 @@ export default function AdminWithdrawalsPage() {
             <CardDescription>Withdrawal requests awaiting approval</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <p className="text-center text-muted-foreground py-8">Loading...</p>
-            ) : pendingWithdrawals.length > 0 ? (
+            {pendingWithdrawals.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -189,8 +202,8 @@ export default function AdminWithdrawalsPage() {
                     <TableRow key={withdrawal.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{withdrawal.profiles.full_name}</p>
-                          <p className="text-xs text-muted-foreground">{withdrawal.profiles.email}</p>
+                          <p className="font-medium">{withdrawal.profiles?.full_name || "Unknown"}</p>
+                          <p className="text-xs text-muted-foreground">{withdrawal.profiles?.email}</p>
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold">₦{withdrawal.amount.toLocaleString()}</TableCell>
@@ -249,8 +262,8 @@ export default function AdminWithdrawalsPage() {
                     <TableRow key={withdrawal.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{withdrawal.profiles.full_name}</p>
-                          <p className="text-xs text-muted-foreground">{withdrawal.profiles.email}</p>
+                          <p className="font-medium">{withdrawal.profiles?.full_name || "Unknown"}</p>
+                          <p className="text-xs text-muted-foreground">{withdrawal.profiles?.email}</p>
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold">₦{withdrawal.amount.toLocaleString()}</TableCell>
@@ -284,7 +297,7 @@ export default function AdminWithdrawalsPage() {
                 {selectedWithdrawal && (
                   <div className="space-y-2 mt-4">
                     <p>
-                      <strong>User:</strong> {selectedWithdrawal.profiles.full_name}
+                      <strong>User:</strong> {selectedWithdrawal.profiles?.full_name}
                     </p>
                     <p>
                       <strong>Amount:</strong> ₦{selectedWithdrawal.amount.toLocaleString()}

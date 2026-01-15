@@ -1,11 +1,8 @@
 "use client"
 
-import { AlertDescription } from "@/components/ui/alert"
-
 import { Alert } from "@/components/ui/alert"
-
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { checkAdminSession } from "@/lib/admin-auth"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,7 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { createClient } from "@/lib/supabase/client"
 import { getAllDepositRequests, type DepositRequest } from "@/lib/api/deposits"
 import {
   Loader2,
@@ -38,13 +34,11 @@ import {
 } from "lucide-react"
 
 export default function AdminDepositsPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [deposits, setDeposits] = useState<DepositRequest[]>([])
   const [filteredDeposits, setFilteredDeposits] = useState<DepositRequest[]>([])
   const [statusFilter, setStatusFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [adminId, setAdminId] = useState<string | null>(null)
 
   // Modal state
   const [selectedDeposit, setSelectedDeposit] = useState<DepositRequest | null>(null)
@@ -54,27 +48,19 @@ export default function AdminDepositsPage() {
   const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
-    const fetchData = async () => {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.push("/auth/login")
-        return
-      }
-
-      setAdminId(user.id)
-
-      const allDeposits = await getAllDepositRequests()
-      setDeposits(allDeposits)
-      setFilteredDeposits(allDeposits)
-      setLoading(false)
+    if (!checkAdminSession()) {
+      window.location.href = "/admin/login"
+      return
     }
-
     fetchData()
-  }, [router])
+  }, [])
+
+  async function fetchData() {
+    const allDeposits = await getAllDepositRequests()
+    setDeposits(allDeposits)
+    setFilteredDeposits(allDeposits)
+    setLoading(false)
+  }
 
   useEffect(() => {
     let filtered = deposits
@@ -97,7 +83,7 @@ export default function AdminDepositsPage() {
   }, [statusFilter, searchQuery, deposits])
 
   const handleAction = async () => {
-    if (!selectedDeposit || !actionType || !adminId) return
+    if (!selectedDeposit || !actionType) return
 
     if (actionType === "reject" && !rejectionReason) {
       alert("Please provide a rejection reason")
@@ -112,7 +98,6 @@ export default function AdminDepositsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           depositId: selectedDeposit.id,
-          adminId,
           action: actionType,
           note: adminNote,
           rejectionReason: actionType === "reject" ? rejectionReason : undefined,
@@ -120,7 +105,6 @@ export default function AdminDepositsPage() {
       })
 
       if (response.ok) {
-        // Refresh deposits
         const allDeposits = await getAllDepositRequests()
         setDeposits(allDeposits)
         setSelectedDeposit(null)
@@ -252,9 +236,9 @@ export default function AdminDepositsPage() {
         {stats.pending > 0 && (
           <Alert className="bg-yellow-500/10 border-yellow-500/30">
             <AlertCircle className="w-4 h-4 text-yellow-500" />
-            <AlertDescription className="text-yellow-400">
+            <div className="text-yellow-600">
               You have {stats.pending} pending deposit request{stats.pending > 1 ? "s" : ""} awaiting review.
-            </AlertDescription>
+            </div>
           </Alert>
         )}
 
@@ -374,7 +358,7 @@ export default function AdminDepositsPage() {
               <DialogTitle>{actionType === "approve" ? "Approve Deposit" : "Reject Deposit"}</DialogTitle>
               <DialogDescription>
                 {actionType === "approve"
-                  ? "This will credit the user's wallet with the deposit amount."
+                  ? "This will create an investment for the user with the deposit amount."
                   : "This will reject the deposit request. A reason is required."}
               </DialogDescription>
             </DialogHeader>

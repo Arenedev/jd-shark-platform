@@ -3,9 +3,8 @@
 import type React from "react"
 
 import Link from "next/link"
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/client"
 import { useState } from "react"
 import {
   LayoutDashboard,
@@ -25,19 +24,13 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children, profile }: AdminLayoutProps) {
-  const router = useRouter()
   const pathname = usePathname()
   const [loading, setLoading] = useState(false)
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setLoading(true)
-    try {
-      const supabase = createClient()
-      await supabase.auth.signOut()
-      router.push("/")
-    } finally {
-      setLoading(false)
-    }
+    localStorage.removeItem("jdshark_admin_session")
+    window.location.href = "/admin/login"
   }
 
   const navItems = [

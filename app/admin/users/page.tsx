@@ -1,30 +1,50 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+"use client"
+
+import { useState, useEffect } from "react"
+import { checkAdminSession } from "@/lib/admin-auth"
+import { createClient } from "@/lib/supabase/client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 
-export default async function AdminUsersPage() {
-  const supabase = await createClient()
+export default function AdminUsersPage() {
+  const [loading, setLoading] = useState(true)
+  const [users, setUsers] = useState<any[]>([])
+  const [wallets, setWallets] = useState<any[]>([])
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  useEffect(() => {
+    if (!checkAdminSession()) {
+      window.location.href = "/admin/login"
+      return
+    }
+    fetchData()
+  }, [])
 
-  if (!user) {
-    redirect("/auth/login")
+  async function fetchData() {
+    const supabase = createClient()
+    const [usersResult, walletsResult] = await Promise.all([
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+      supabase.from("wallets").select("*"),
+    ])
+
+    setUsers(usersResult.data || [])
+    setWallets(walletsResult.data || [])
+    setLoading(false)
   }
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-
-  const { data: users } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
-
-  // Fetch wallet data for users
-  const { data: wallets } = await supabase.from("wallets").select("*")
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading users...</div>
+        </div>
+      </AdminLayout>
+    )
+  }
 
   return (
-    <AdminLayout profile={profile}>
+    <AdminLayout>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Manage Users</h1>

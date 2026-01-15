@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -10,10 +9,32 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
+function checkAdminSession(): boolean {
+  if (typeof window === "undefined") return false
+
+  try {
+    const sessionStr = localStorage.getItem("jdshark_admin_session")
+    if (!sessionStr) return false
+
+    const session = JSON.parse(sessionStr)
+    if (!session.authenticated) return false
+
+    // Check if session expired
+    if (new Date(session.expiresAt) < new Date()) {
+      localStorage.removeItem("jdshark_admin_session")
+      return false
+    }
+
+    return true
+  } catch {
+    return false
+  }
+}
+
 export default function AdminDashboard() {
-  const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [stats, setStats] = useState({
     totalUsers: 0,
     pendingKYC: 0,
@@ -30,49 +51,16 @@ export default function AdminDashboard() {
   const [topEarners, setTopEarners] = useState<any[]>([])
 
   useEffect(() => {
-    checkAuth()
-  }, [])
+    const isAdmin = checkAdminSession()
 
-  async function checkAuth() {
-    console.log("[v0] Admin: Starting auth check")
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    console.log("[v0] Admin: Session check", !!session)
-
-    if (!session) {
-      console.log("[v0] Admin: No session, redirecting to login")
-      router.push("/auth/login")
+    if (!isAdmin) {
+      window.location.href = "/admin/login"
       return
     }
 
-    try {
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", session.user.id)
-        .single()
-
-      console.log("[v0] Admin: Profile check", { hasProfile: !!profile, isAdmin: profile?.is_admin, error })
-
-      if (error) {
-        console.error("[v0] Admin: Error checking profile", error)
-        return
-      }
-
-      if (!profile?.is_admin) {
-        console.log("[v0] Admin: Not an admin, redirecting to dashboard")
-        router.push("/dashboard")
-        return
-      }
-
-      console.log("[v0] Admin: Authorized, loading data")
-      fetchData()
-    } catch (error) {
-      console.error("[v0] Admin: Exception during auth check", error)
-    }
-  }
+    setIsAuthenticated(true)
+    fetchData()
+  }, [])
 
   async function fetchData() {
     try {
@@ -93,11 +81,9 @@ export default function AdminDashboard() {
       const withdrawals = withdrawalsResult.data || []
       const earnings = earningsResult.data || []
 
-      // Calculate statistics
       const totalBalance = wallets.reduce((sum: number, w: any) => sum + (w.balance || 0), 0)
       const pendingKYC = users.filter((u: any) => u.kyc_status === "pending").length
 
-      // Count by base structure
       const investorCount = users.filter((u: any) => u.base_structure === "investor").length
       const orgCount = users.filter((u: any) => u.base_structure === "organization").length
       const associateCount = users.filter((u: any) => u.base_structure === "associate").length
@@ -117,7 +103,6 @@ export default function AdminDashboard() {
       setRecentUsers(users.slice(0, 5))
       setPendingKYCUsers(users.filter((u: any) => u.kyc_status === "pending").slice(0, 10))
 
-      // Calculate top earners
       const earningsByUser: { [key: string]: { name: string; email: string; total: number } } = {}
       earnings.forEach((earning: any) => {
         const userId = earning.user_id
@@ -143,7 +128,7 @@ export default function AdminDashboard() {
     }
   }
 
-  if (loading) {
+  if (!isAuthenticated || loading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
@@ -172,7 +157,6 @@ export default function AdminDashboard() {
           </Alert>
         )}
 
-        {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="hover:border-accent/50 transition-colors">
             <CardHeader className="pb-3">
@@ -239,7 +223,6 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Recent Users */}
         <Card className="hover:border-accent/50 transition-colors">
           <CardHeader>
             <CardTitle>Recent Users</CardTitle>
@@ -293,7 +276,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Pending KYC Applications */}
         <Card className="hover:border-accent/50 transition-colors">
           <CardHeader>
             <CardTitle>Pending KYC Applications</CardTitle>
@@ -331,7 +313,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Top Earners */}
         <Card className="hover:border-accent/50 transition-colors">
           <CardHeader>
             <CardTitle>Top Earners</CardTitle>
