@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
           status: "approved",
           approved_by: adminId,
           approved_at: now,
-          admin_note: note || null,
+          admin_notes: note || null,
           updated_at: now,
         })
         .eq("id", depositId)
@@ -199,12 +199,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: "Rejection reason is required" }, { status: 400 })
       }
 
+      // Update deposit request status
       const { error: updateError } = await supabase
         .from("deposit_requests")
         .update({
           status: "rejected",
           rejection_reason: rejectionReason,
-          admin_note: note || null,
+          admin_notes: note || null,
           updated_at: now,
         })
         .eq("id", depositId)
