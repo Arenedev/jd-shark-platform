@@ -93,11 +93,15 @@ export default function AdminDepositsPage() {
     setProcessing(true)
 
     try {
+      const session = localStorage.getItem("adminSession")
+      const adminId = session ? JSON.parse(session).adminId : "admin"
+
       const response = await fetch("/api/admin/deposits/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           depositId: selectedDeposit.id,
+          adminId, // Now sending adminId
           action: actionType,
           note: adminNote,
           rejectionReason: actionType === "reject" ? rejectionReason : undefined,

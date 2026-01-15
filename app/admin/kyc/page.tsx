@@ -26,7 +26,11 @@ export default function AdminKYCPage() {
 
   async function fetchData() {
     const supabase = createClient()
-    const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .or("kyc_document_url.not.is.null,kyc_status.eq.pending,kyc_status.eq.approved,kyc_status.eq.rejected")
+      .order("created_at", { ascending: false })
     setKycUsers(data || [])
     setLoading(false)
   }
@@ -128,62 +132,70 @@ export default function AdminKYCPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {kycUsers?.map((usr: any) => (
-                  <TableRow key={usr.id}>
-                    <TableCell className="font-medium">{usr.full_name}</TableCell>
-                    <TableCell>{usr.email}</TableCell>
-                    <TableCell>
-                      {usr.kyc_document_url ? (
-                        <a
-                          href={usr.kyc_document_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          View Document
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground">No document</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          usr.kyc_status === "approved"
-                            ? "bg-green-100 text-green-800"
-                            : usr.kyc_status === "rejected"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                        }
-                      >
-                        {usr.kyc_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(usr.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      {usr.kyc_status === "pending" && (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleKYCAction(usr.id, "approved")}
-                            disabled={processing === usr.id}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            {processing === usr.id ? "..." : "Approve"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleKYCAction(usr.id, "rejected")}
-                            disabled={processing === usr.id}
-                          >
-                            {processing === usr.id ? "..." : "Reject"}
-                          </Button>
-                        </div>
-                      )}
+                {kycUsers?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No KYC submissions yet
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  kycUsers?.map((usr: any) => (
+                    <TableRow key={usr.id}>
+                      <TableCell className="font-medium">{usr.full_name}</TableCell>
+                      <TableCell>{usr.email}</TableCell>
+                      <TableCell>
+                        {usr.kyc_document_url ? (
+                          <a
+                            href={usr.kyc_document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            View Document
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">No document submitted</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={
+                            usr.kyc_status === "approved"
+                              ? "bg-green-100 text-green-800"
+                              : usr.kyc_status === "rejected"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                          }
+                        >
+                          {usr.kyc_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(usr.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {usr.kyc_status === "pending" && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleKYCAction(usr.id, "approved")}
+                              disabled={processing === usr.id}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              {processing === usr.id ? "..." : "Approve"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleKYCAction(usr.id, "rejected")}
+                              disabled={processing === usr.id}
+                            >
+                              {processing === usr.id ? "..." : "Reject"}
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
