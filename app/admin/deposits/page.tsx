@@ -56,16 +56,25 @@ export default function AdminDepositsPage() {
 
   async function fetchData() {
     try {
+      console.log("[v0] Fetching admin deposits data...")
       const response = await fetch("/api/admin/stats")
+
+      console.log("[v0] Response status:", response.status)
+
       if (!response.ok) throw new Error("Failed to fetch data")
 
       const data = await response.json()
-      console.log("[v0] Admin deposits data:", data)
+      console.log("[v0] Full API response:", data)
+      console.log("[v0] Deposits from API:", data.deposits)
+      console.log("[v0] Number of deposits:", data.deposits?.length || 0)
 
-      // Extract deposits from the API response
       const depositsData = data.deposits || []
+      console.log("[v0] Setting deposits state with:", depositsData)
+
       setDeposits(depositsData)
       setFilteredDeposits(depositsData)
+
+      console.log("[v0] Deposits state set successfully")
     } catch (error) {
       console.error("[v0] Error fetching deposits:", error)
       setDeposits([])
@@ -292,11 +301,19 @@ export default function AdminDepositsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Deposit Requests</CardTitle>
-            <CardDescription>Review and process deposit requests</CardDescription>
+            <CardDescription>Review and process deposit requests ({filteredDeposits.length} found)</CardDescription>
           </CardHeader>
           <CardContent>
             {filteredDeposits.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No deposit requests found</div>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No deposit requests found</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Total deposits loaded: {deposits.length} | Filtered: {filteredDeposits.length}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Active filter: {statusFilter} | Search: {searchQuery || "none"}
+                </p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {filteredDeposits.map((deposit) => (
