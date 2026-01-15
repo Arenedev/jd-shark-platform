@@ -32,6 +32,8 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Create profile if it doesn't exist
     if (!existingProfile || existingProfile.length === 0) {
+      console.log("[v0] Creating profile with base_structure:", userBaseStructure)
+
       const { error: profileError, data: profileData } = await supabase
         .from("profiles")
         .insert({
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
           phone: phone || null,
           kyc_status: "pending",
           base_structure: userBaseStructure,
-          rank: userBaseStructure === "associate" ? "fin_starter" : null,
+          current_rank: userBaseStructure === "associate" ? "fin_starter" : null,
           referrer_id: referrerId || null,
           personal_capital: 0,
           network_capital: 0,
@@ -61,6 +63,8 @@ export async function POST(request: NextRequest) {
         }
         return NextResponse.json({ message: "Failed to create profile" }, { status: 500 })
       }
+
+      console.log("[v0] Profile created:", profileData)
     }
 
     // Step 3: Auto-confirm the user's email

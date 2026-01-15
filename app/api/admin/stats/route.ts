@@ -24,43 +24,53 @@ export async function GET() {
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("wallets").select("*"),
       supabase.from("investments").select("*"),
+      // Explicitly specify the foreign key relationship by selecting user data manually
       supabase
         .from("deposit_requests")
-        .select(
-          `
-        *,
-        profiles (
-          id,
-          full_name,
-          email,
-          base_structure
-        )
-      `,
-        )
+        .select("*")
         .order("created_at", { ascending: false }),
-      supabase
-        .from("withdrawal_requests")
-        .select(
-          `
-        *,
-        profiles (
-          id,
-          full_name,
-          email,
-          base_structure
-        )
-      `,
-        )
-        .order("created_at", { ascending: false }),
+      supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }),
     ])
 
     console.log("[v0] Users result:", usersResult.error || `${usersResult.data?.length} users`)
     console.log("[v0] Deposits result:", depositsResult.error || `${depositsResult.data?.length} deposits`)
     console.log("[v0] Wallets result:", walletsResult.error || `${walletsResult.data?.length} wallets`)
 
-    // Log first deposit for debugging
-    if (depositsResult.data && depositsResult.data.length > 0) {
-      console.log("[v0] First deposit sample:", JSON.stringify(depositsResult.data[0], null, 2))
+    let depositsWithProfiles = []
+    if (depositsResult.data && usersResult.data) {
+      depositsWithProfiles = depositsResult.data.map((deposit: any) => {
+        const userProfile = usersResult.data.find((u: any) => u.id === deposit.user_id)
+        return {
+          ...deposit,
+          user: userProfile
+            ? {
+                id: userProfile.id,
+                full_name: userProfile.full_name,
+                email: userProfile.email,
+                base_structure: userProfile.base_structure,
+              }
+            : null,
+        }
+      })
+      console.log("[v0] Successfully joined deposits with user profiles:", depositsWithProfiles.length)
+    }
+
+    let withdrawalsWithProfiles = []
+    if (withdrawalsResult.data && usersResult.data) {
+      withdrawalsWithProfiles = withdrawalsResult.data.map((withdrawal: any) => {
+        const userProfile = usersResult.data.find((u: any) => u.id === withdrawal.user_id)
+        return {
+          ...withdrawal,
+          user: userProfile
+            ? {
+                id: userProfile.id,
+                full_name: userProfile.full_name,
+                email: userProfile.email,
+                base_structure: userProfile.base_structure,
+              }
+            : null,
+        }
+      })
     }
 
     if (usersResult.error) {
@@ -76,8 +86,6 @@ export async function GET() {
     const users = usersResult.data || []
     const wallets = walletsResult.data || []
     const investments = investmentsResult.data || []
-    const deposits = depositsResult.data || []
-    const withdrawals = withdrawalsResult.data || []
 
     const totalBalance = wallets.reduce((sum: number, w: any) => sum + (w.balance || 0), 0)
     const pendingKYC = users.filter((u: any) => u.kyc_status === "pending").length
@@ -86,13 +94,15 @@ export async function GET() {
     const orgCount = users.filter((u: any) => u.base_structure === "organization").length
     const associateCount = users.filter((u: any) => u.base_structure === "associate").length
 
+    console.log("[v0] Base structure counts:", { investorCount, orgCount, associateCount })
+
     const stats = {
       totalUsers: users.length,
       pendingKYC,
       activeInvestments: investments.length,
       totalWalletBalance: totalBalance,
-      pendingDeposits: deposits.filter((d: any) => d.status === "pending").length,
-      pendingWithdrawals: withdrawals.filter((w: any) => w.status === "pending").length,
+      pendingDeposits: depositsWithProfiles.filter((d: any) => d.status === "pending").length,
+      pendingWithdrawals: withdrawalsWithProfiles.filter((w: any) => w.status === "pending").length,
       investorCount,
       orgCount,
       associateCount,
@@ -105,10 +115,10 @@ export async function GET() {
       stats,
       recentUsers,
       pendingKYCUsers,
-      users, // Full user list for users page
-      wallets, // Full wallet list for users page
-      deposits, // Full deposits list with profiles for deposits page
-      withdrawals, // Full withdrawals list for withdrawals page
+      users,
+      wallets,
+      deposits: depositsWithProfiles,
+      withdrawals: withdrawalsWithProfiles,
     })
   } catch (error: any) {
     console.error("[v0] Admin stats error:", error)
