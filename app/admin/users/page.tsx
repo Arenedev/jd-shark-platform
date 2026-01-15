@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { checkAdminSession } from "@/lib/admin-auth"
-import { createAdminClient } from "@/lib/supabase/admin-client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -24,16 +23,19 @@ export default function AdminUsersPage() {
 
   async function fetchData() {
     try {
-      const supabase = createAdminClient()
-      const [usersResult, walletsResult] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("wallets").select("*"),
-      ])
+      const response = await fetch("/api/admin/stats")
+      if (!response.ok) throw new Error("Failed to fetch data")
 
-      setUsers(usersResult.data || [])
-      setWallets(walletsResult.data || [])
+      const data = await response.json()
+      console.log("[v0] Admin users data:", data)
+
+      // Extract users and wallets from the API response
+      setUsers(data.users || [])
+      setWallets(data.wallets || [])
     } catch (error) {
       console.error("[v0] Error fetching users:", error)
+      setUsers([])
+      setWallets([])
     } finally {
       setLoading(false)
     }

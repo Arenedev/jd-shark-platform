@@ -19,7 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { createAdminClient } from "@/lib/supabase/admin-client"
 import {
   Loader2,
   Clock,
@@ -56,28 +55,24 @@ export default function AdminDepositsPage() {
   }, [])
 
   async function fetchData() {
-    const supabase = createAdminClient()
-    const { data, error } = await supabase
-      .from("deposit_requests")
-      .select(`
-        *,
-        profiles (
-          id,
-          full_name,
-          email
-        )
-      `)
-      .order("created_at", { ascending: false })
+    try {
+      const response = await fetch("/api/admin/stats")
+      if (!response.ok) throw new Error("Failed to fetch data")
 
-    if (error) {
+      const data = await response.json()
+      console.log("[v0] Admin deposits data:", data)
+
+      // Extract deposits from the API response
+      const depositsData = data.deposits || []
+      setDeposits(depositsData)
+      setFilteredDeposits(depositsData)
+    } catch (error) {
       console.error("[v0] Error fetching deposits:", error)
       setDeposits([])
-    } else {
-      setDeposits(data || [])
+      setFilteredDeposits([])
+    } finally {
+      setLoading(false)
     }
-
-    setFilteredDeposits(data || [])
-    setLoading(false)
   }
 
   useEffect(() => {
@@ -119,7 +114,7 @@ export default function AdminDepositsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           depositId: selectedDeposit.id,
-          adminId, // Now sending adminId
+          adminId,
           action: actionType,
           note: adminNote,
           rejectionReason: actionType === "reject" ? rejectionReason : undefined,
@@ -127,25 +122,7 @@ export default function AdminDepositsPage() {
       })
 
       if (response.ok) {
-        const { data, error } = await createAdminClient()
-          .from("deposit_requests")
-          .select(`
-            *,
-            profiles (
-              id,
-              full_name,
-              email
-            )
-          `)
-          .order("created_at", { ascending: false })
-
-        if (error) {
-          console.error("[v0] Error fetching deposits after action:", error)
-          setDeposits([])
-        } else {
-          setDeposits(data || [])
-        }
-
+        await fetchData()
         setSelectedDeposit(null)
         setActionType(null)
         setAdminNote("")

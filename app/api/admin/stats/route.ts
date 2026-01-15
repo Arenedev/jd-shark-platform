@@ -22,13 +22,38 @@ export async function GET() {
 
     const [usersResult, walletsResult, investmentsResult, depositsResult, withdrawalsResult] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("wallets").select("balance"),
+      supabase.from("wallets").select("*"),
       supabase.from("investments").select("*"),
-      supabase.from("deposit_requests").select("*").eq("status", "pending"),
-      supabase.from("withdrawal_requests").select("*").eq("status", "pending"),
+      supabase
+        .from("deposit_requests")
+        .select(
+          `
+        *,
+        profiles (
+          id,
+          full_name,
+          email
+        )
+      `,
+        )
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("withdrawal_requests")
+        .select(
+          `
+        *,
+        profiles (
+          id,
+          full_name,
+          email
+        )
+      `,
+        )
+        .order("created_at", { ascending: false }),
     ])
 
     console.log("[v0] Users result:", usersResult.error || `${usersResult.data?.length} users`)
+    console.log("[v0] Deposits result:", depositsResult.error || `${depositsResult.data?.length} deposits`)
     console.log("[v0] Wallets result:", walletsResult.error || `${walletsResult.data?.length} wallets`)
 
     if (usersResult.error) {
@@ -36,6 +61,9 @@ export async function GET() {
     }
     if (walletsResult.error) {
       console.error("[v0] Error fetching wallets:", walletsResult.error)
+    }
+    if (depositsResult.error) {
+      console.error("[v0] Error fetching deposits:", depositsResult.error)
     }
 
     const users = usersResult.data || []
@@ -56,8 +84,8 @@ export async function GET() {
       pendingKYC,
       activeInvestments: investments.length,
       totalWalletBalance: totalBalance,
-      pendingDeposits: deposits.length,
-      pendingWithdrawals: withdrawals.length,
+      pendingDeposits: deposits.filter((d: any) => d.status === "pending").length,
+      pendingWithdrawals: withdrawals.filter((w: any) => w.status === "pending").length,
       investorCount,
       orgCount,
       associateCount,
@@ -70,6 +98,10 @@ export async function GET() {
       stats,
       recentUsers,
       pendingKYCUsers,
+      users, // Full user list for users page
+      wallets, // Full wallet list for users page
+      deposits, // Full deposits list with profiles for deposits page
+      withdrawals, // Full withdrawals list for withdrawals page
     })
   } catch (error: any) {
     console.error("[v0] Admin stats error:", error)
