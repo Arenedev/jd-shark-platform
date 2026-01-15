@@ -89,6 +89,11 @@ export default function DashboardPage() {
 
   const recentTransactions = transactions.slice(0, 5)
 
+  const getBaseStructureDisplay = (baseStructure: string | null) => {
+    if (!baseStructure) return "Not Set"
+    return baseStructure.charAt(0).toUpperCase() + baseStructure.slice(1)
+  }
+
   return (
     <DashboardLayout profile={profile}>
       <div className="space-y-6 sm:space-y-8">
@@ -103,8 +108,19 @@ export default function DashboardPage() {
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Account Type</CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant="outline" className="text-sm sm:text-lg capitalize">
-                {profile.base_structure || "Not Set"}
+              <Badge
+                variant="outline"
+                className={`text-sm sm:text-lg capitalize ${
+                  profile.base_structure === "investor"
+                    ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
+                    : profile.base_structure === "organization"
+                      ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
+                      : profile.base_structure === "associate"
+                        ? "bg-green-500/10 text-green-500 border-green-500/30"
+                        : ""
+                }`}
+              >
+                {getBaseStructureDisplay(profile.base_structure)}
               </Badge>
             </CardContent>
           </Card>
@@ -115,7 +131,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <Badge variant="secondary" className="text-sm sm:text-lg capitalize">
-                {profile.current_rank || "Unranked"}
+                {profile.current_rank?.replace(/_/g, " ") || "Unranked"}
               </Badge>
             </CardContent>
           </Card>

@@ -32,7 +32,8 @@ export async function GET() {
         profiles (
           id,
           full_name,
-          email
+          email,
+          base_structure
         )
       `,
         )
@@ -45,7 +46,8 @@ export async function GET() {
         profiles (
           id,
           full_name,
-          email
+          email,
+          base_structure
         )
       `,
         )
@@ -55,6 +57,11 @@ export async function GET() {
     console.log("[v0] Users result:", usersResult.error || `${usersResult.data?.length} users`)
     console.log("[v0] Deposits result:", depositsResult.error || `${depositsResult.data?.length} deposits`)
     console.log("[v0] Wallets result:", walletsResult.error || `${walletsResult.data?.length} wallets`)
+
+    // Log first deposit for debugging
+    if (depositsResult.data && depositsResult.data.length > 0) {
+      console.log("[v0] First deposit sample:", JSON.stringify(depositsResult.data[0], null, 2))
+    }
 
     if (usersResult.error) {
       console.error("[v0] Error fetching users:", usersResult.error)
