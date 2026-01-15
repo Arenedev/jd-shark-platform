@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createAdminClient } from "@/lib/supabase/admin-client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -33,6 +32,7 @@ function checkAdminSession(): boolean {
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState({
     totalUsers: 0,
     pendingKYC: 0,
@@ -61,45 +61,25 @@ export default function AdminDashboard() {
 
   async function fetchData() {
     try {
-      const supabase = createAdminClient()
+      setError(null)
+      console.log("[v0] Fetching admin stats from API...")
 
-      const [usersResult, walletsResult, investmentsResult, depositsResult, withdrawalsResult] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("wallets").select("balance"),
-        supabase.from("investments").select("*"),
-        supabase.from("deposit_requests").select("*").eq("status", "pending"),
-        supabase.from("withdrawal_requests").select("*").eq("status", "pending"),
-      ])
+      const response = await fetch("/api/admin/stats")
 
-      const users = usersResult.data || []
-      const wallets = walletsResult.data || []
-      const investments = investmentsResult.data || []
-      const deposits = depositsResult.data || []
-      const withdrawals = withdrawalsResult.data || []
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.statusText}`)
+      }
 
-      const totalBalance = wallets.reduce((sum: number, w: any) => sum + (w.balance || 0), 0)
-      const pendingKYC = users.filter((u: any) => u.kyc_status === "pending").length
+      const data = await response.json()
 
-      const investorCount = users.filter((u: any) => u.base_structure === "investor").length
-      const orgCount = users.filter((u: any) => u.base_structure === "organization").length
-      const associateCount = users.filter((u: any) => u.base_structure === "associate").length
+      console.log("[v0] Received admin stats:", data.stats)
 
-      setStats({
-        totalUsers: users.length,
-        pendingKYC,
-        activeInvestments: investments.length,
-        totalWalletBalance: totalBalance,
-        pendingDeposits: deposits.length,
-        pendingWithdrawals: withdrawals.length,
-        investorCount,
-        orgCount,
-        associateCount,
-      })
-
-      setRecentUsers(users.slice(0, 5))
-      setPendingKYCUsers(users.filter((u: any) => u.kyc_status === "pending").slice(0, 10))
-    } catch (error) {
+      setStats(data.stats)
+      setRecentUsers(data.recentUsers)
+      setPendingKYCUsers(data.pendingKYCUsers)
+    } catch (error: any) {
       console.error("[v0] Error fetching admin data:", error)
+      setError(error.message)
     } finally {
       setLoading(false)
     }
@@ -111,6 +91,17 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
+      </AdminLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Error loading admin data: {error}</AlertDescription>
+        </Alert>
       </AdminLayout>
     )
   }
