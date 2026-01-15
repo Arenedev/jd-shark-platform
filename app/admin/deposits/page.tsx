@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { getAllDepositRequests, type DepositRequest } from "@/lib/api/deposits"
+import { createAdminClient } from "@/lib/supabase/admin-client"
 import {
   Loader2,
   Clock,
@@ -35,13 +35,13 @@ import {
 
 export default function AdminDepositsPage() {
   const [loading, setLoading] = useState(true)
-  const [deposits, setDeposits] = useState<DepositRequest[]>([])
-  const [filteredDeposits, setFilteredDeposits] = useState<DepositRequest[]>([])
+  const [deposits, setDeposits] = useState<any[]>([])
+  const [filteredDeposits, setFilteredDeposits] = useState<any[]>([])
   const [statusFilter, setStatusFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
 
   // Modal state
-  const [selectedDeposit, setSelectedDeposit] = useState<DepositRequest | null>(null)
+  const [selectedDeposit, setSelectedDeposit] = useState<any | null>(null)
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(null)
   const [adminNote, setAdminNote] = useState("")
   const [rejectionReason, setRejectionReason] = useState("")
@@ -56,9 +56,27 @@ export default function AdminDepositsPage() {
   }, [])
 
   async function fetchData() {
-    const allDeposits = await getAllDepositRequests()
-    setDeposits(allDeposits)
-    setFilteredDeposits(allDeposits)
+    const supabase = createAdminClient()
+    const { data, error } = await supabase
+      .from("deposit_requests")
+      .select(`
+        *,
+        profiles (
+          id,
+          full_name,
+          email
+        )
+      `)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("[v0] Error fetching deposits:", error)
+      setDeposits([])
+    } else {
+      setDeposits(data || [])
+    }
+
+    setFilteredDeposits(data || [])
     setLoading(false)
   }
 
@@ -74,8 +92,8 @@ export default function AdminDepositsPage() {
       filtered = filtered.filter(
         (d) =>
           d.transaction_reference?.toLowerCase().includes(query) ||
-          (d.profiles as any)?.full_name?.toLowerCase().includes(query) ||
-          (d.profiles as any)?.email?.toLowerCase().includes(query),
+          d.profiles?.full_name?.toLowerCase().includes(query) ||
+          d.profiles?.email?.toLowerCase().includes(query),
       )
     }
 
@@ -109,8 +127,25 @@ export default function AdminDepositsPage() {
       })
 
       if (response.ok) {
-        const allDeposits = await getAllDepositRequests()
-        setDeposits(allDeposits)
+        const { data, error } = await createAdminClient()
+          .from("deposit_requests")
+          .select(`
+            *,
+            profiles (
+              id,
+              full_name,
+              email
+            )
+          `)
+          .order("created_at", { ascending: false })
+
+        if (error) {
+          console.error("[v0] Error fetching deposits after action:", error)
+          setDeposits([])
+        } else {
+          setDeposits(data || [])
+        }
+
         setSelectedDeposit(null)
         setActionType(null)
         setAdminNote("")
@@ -297,8 +332,8 @@ export default function AdminDepositsPage() {
                         <Users className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium">{(deposit.profiles as any)?.full_name || "Unknown"}</p>
-                        <p className="text-sm text-muted-foreground">{(deposit.profiles as any)?.email}</p>
+                        <p className="font-medium">{deposit.profiles?.full_name || "Unknown"}</p>
+                        <p className="text-sm text-muted-foreground">{deposit.profiles?.email}</p>
                         <p className="text-xs text-muted-foreground">
                           {deposit.transaction_reference} • {deposit.payment_method}
                         </p>
@@ -371,7 +406,7 @@ export default function AdminDepositsPage() {
               <div className="space-y-4">
                 <div className="p-4 bg-muted/30 rounded-lg">
                   <p className="text-sm text-muted-foreground">User</p>
-                  <p className="font-medium">{(selectedDeposit.profiles as any)?.full_name}</p>
+                  <p className="font-medium">{selectedDeposit.profiles?.full_name}</p>
                   <p className="text-sm text-muted-foreground mt-2">Amount</p>
                   <p className="font-bold text-xl">₦{selectedDeposit.amount.toLocaleString()}</p>
                 </div>

@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { checkAdminSession } from "@/lib/admin-auth"
-import { createClient } from "@/lib/supabase/client"
+import { createAdminClient } from "@/lib/supabase/admin-client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
 
 export default function AdminKYCPage() {
   const [loading, setLoading] = useState(true)
@@ -25,20 +26,25 @@ export default function AdminKYCPage() {
   }, [])
 
   async function fetchData() {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .or("kyc_document_url.not.is.null,kyc_status.eq.pending,kyc_status.eq.approved,kyc_status.eq.rejected")
-      .order("created_at", { ascending: false })
-    setKycUsers(data || [])
-    setLoading(false)
+    try {
+      const supabase = createAdminClient()
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .or("kyc_document_url.not.is.null,kyc_status.eq.pending,kyc_status.eq.approved,kyc_status.eq.rejected")
+        .order("created_at", { ascending: false })
+      setKycUsers(data || [])
+    } catch (error) {
+      console.error("[v0] Error fetching KYC data:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleKYCAction(userId: string, status: "approved" | "rejected") {
     setProcessing(userId)
     try {
-      const supabase = createClient()
+      const supabase = createAdminClient()
       const { error } = await supabase.from("profiles").update({ kyc_status: status }).eq("id", userId)
 
       if (error) throw error
@@ -63,7 +69,7 @@ export default function AdminKYCPage() {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading KYC data...</div>
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       </AdminLayout>
     )
@@ -71,14 +77,14 @@ export default function AdminKYCPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">KYC Verification</h1>
-          <p className="text-muted-foreground">Manage Know Your Customer verification</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">KYC Verification</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage Know Your Customer verification</p>
         </div>
 
         {/* KYC Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Approved</CardTitle>
@@ -116,19 +122,19 @@ export default function AdminKYCPage() {
         {/* KYC Records */}
         <Card>
           <CardHeader>
-            <CardTitle>All KYC Records</CardTitle>
-            <CardDescription>Manage user verification status</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">All KYC Records</CardTitle>
+            <CardDescription className="text-sm">Manage user verification status</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Document</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="whitespace-nowrap">Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Email</TableHead>
+                  <TableHead className="whitespace-nowrap">Document</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Submitted</TableHead>
+                  <TableHead className="whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -141,8 +147,8 @@ export default function AdminKYCPage() {
                 ) : (
                   kycUsers?.map((usr: any) => (
                     <TableRow key={usr.id}>
-                      <TableCell className="font-medium">{usr.full_name}</TableCell>
-                      <TableCell>{usr.email}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{usr.full_name}</TableCell>
+                      <TableCell className="whitespace-nowrap">{usr.email}</TableCell>
                       <TableCell>
                         {usr.kyc_document_url ? (
                           <a
@@ -154,7 +160,7 @@ export default function AdminKYCPage() {
                             View Document
                           </a>
                         ) : (
-                          <span className="text-muted-foreground text-sm">No document submitted</span>
+                          <span className="text-muted-foreground text-sm">No document</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -170,7 +176,9 @@ export default function AdminKYCPage() {
                           {usr.kyc_status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(usr.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(usr.created_at).toLocaleDateString()}
+                      </TableCell>
                       <TableCell>
                         {usr.kyc_status === "pending" && (
                           <div className="flex gap-2">

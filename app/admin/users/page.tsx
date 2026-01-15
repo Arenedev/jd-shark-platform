@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { checkAdminSession } from "@/lib/admin-auth"
-import { createClient } from "@/lib/supabase/client"
+import { createAdminClient } from "@/lib/supabase/admin-client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Loader2 } from "lucide-react"
 
 export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
@@ -22,22 +23,27 @@ export default function AdminUsersPage() {
   }, [])
 
   async function fetchData() {
-    const supabase = createClient()
-    const [usersResult, walletsResult] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("wallets").select("*"),
-    ])
+    try {
+      const supabase = createAdminClient()
+      const [usersResult, walletsResult] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("wallets").select("*"),
+      ])
 
-    setUsers(usersResult.data || [])
-    setWallets(walletsResult.data || [])
-    setLoading(false)
+      setUsers(usersResult.data || [])
+      setWallets(walletsResult.data || [])
+    } catch (error) {
+      console.error("[v0] Error fetching users:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (loading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading users...</div>
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       </AdminLayout>
     )
@@ -45,28 +51,28 @@ export default function AdminUsersPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Manage Users</h1>
-          <p className="text-muted-foreground">View and manage all platform users</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Manage Users</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">View and manage all platform users</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>All Users</CardTitle>
-            <CardDescription>Complete list of registered users</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">All Users</CardTitle>
+            <CardDescription className="text-sm">Complete list of registered users</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Base Structure</TableHead>
-                  <TableHead>Rank</TableHead>
-                  <TableHead>KYC Status</TableHead>
-                  <TableHead>Wallet Balance</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <TableHead className="whitespace-nowrap">Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Email</TableHead>
+                  <TableHead className="whitespace-nowrap">Base Structure</TableHead>
+                  <TableHead className="whitespace-nowrap">Rank</TableHead>
+                  <TableHead className="whitespace-nowrap">KYC Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Wallet Balance</TableHead>
+                  <TableHead className="whitespace-nowrap">Joined</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -74,15 +80,15 @@ export default function AdminUsersPage() {
                   const wallet = wallets?.find((w: any) => w.user_id === usr.id)
                   return (
                     <TableRow key={usr.id}>
-                      <TableCell className="font-medium">{usr.full_name || "Unknown"}</TableCell>
-                      <TableCell>{usr.email}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{usr.full_name || "Unknown"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{usr.email}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">
+                        <Badge variant="outline" className="capitalize whitespace-nowrap">
                           {usr.base_structure || "N/A"}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="capitalize">
+                        <Badge variant="secondary" className="capitalize whitespace-nowrap">
                           {usr.current_rank || "Unranked"}
                         </Badge>
                       </TableCell>
@@ -99,8 +105,12 @@ export default function AdminUsersPage() {
                           {usr.kyc_status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-semibold">₦{(wallet?.balance || 0).toLocaleString()}</TableCell>
-                      <TableCell>{new Date(usr.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-semibold whitespace-nowrap">
+                        ₦{(wallet?.balance || 0).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(usr.created_at).toLocaleDateString()}
+                      </TableCell>
                     </TableRow>
                   )
                 })}

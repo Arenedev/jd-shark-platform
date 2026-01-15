@@ -91,84 +91,84 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {profile.full_name}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Welcome back, {profile.full_name}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Account Type</CardTitle>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Account Type</CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant="outline" className="text-lg capitalize">
+              <Badge variant="outline" className="text-sm sm:text-lg capitalize">
                 {profile.base_structure || "Not Set"}
               </Badge>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Current Rank</CardTitle>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Current Rank</CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant="secondary" className="text-lg capitalize">
+              <Badge variant="secondary" className="text-sm sm:text-lg capitalize">
                 {profile.current_rank || "Unranked"}
               </Badge>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Personal Capital (PC)</CardTitle>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Personal Capital</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₦{(balances?.personalCapital || 0).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-1">Locked in investments</p>
+              <div className="text-xl sm:text-2xl font-bold">₦{(balances?.personalCapital || 0).toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-1">Locked</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Returns Balance</CardTitle>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Returns Balance</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">
                 ₦{(balances?.returnsBalance || 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Available for withdrawal</p>
+              <p className="text-xs text-muted-foreground mt-1">Withdrawable</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Returns Earned</CardTitle>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Returns</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-xl sm:text-2xl font-bold text-primary">
                 ₦{(balances?.totalReturnsEarned || 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Lifetime earnings</p>
+              <p className="text-xs text-muted-foreground mt-1">Lifetime</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Available to Withdraw</CardTitle>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Available</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">
                 ₦{(balances?.availableForWithdrawal || 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">After pending requests</p>
+              <p className="text-xs text-muted-foreground mt-1">To withdraw</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             <WalletOverview wallet={wallet} profile={profile} />
             <QuickActions userId={profile.id} />
           </div>

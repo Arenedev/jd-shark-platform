@@ -5,6 +5,8 @@ export async function POST(request: NextRequest) {
   try {
     const { depositId, adminId, action, note, rejectionReason } = await request.json()
 
+    console.log("[v0] Deposit approval request:", { depositId, adminId, action })
+
     if (!depositId || !adminId || !action) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
     }
@@ -22,14 +24,21 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceClient(supabaseUrl, supabaseServiceKey)
 
-    // Get deposit request
     const { data: deposit, error: depositError } = await supabase
       .from("deposit_requests")
-      .select("*, profiles:user_id(base_structure, rank)")
+      .select("*, profiles:user_id(base_structure, current_rank)")
       .eq("id", depositId)
-      .single()
+      .maybeSingle()
 
-    if (depositError || !deposit) {
+    console.log("[v0] Deposit found:", deposit)
+    console.log("[v0] Deposit error:", depositError)
+
+    if (depositError) {
+      console.error("[v0] Database error:", depositError)
+      return NextResponse.json({ message: "Database error: " + depositError.message }, { status: 500 })
+    }
+
+    if (!deposit) {
       return NextResponse.json({ message: "Deposit request not found" }, { status: 404 })
     }
 

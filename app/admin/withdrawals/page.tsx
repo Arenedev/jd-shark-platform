@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { checkAdminSession } from "@/lib/admin-auth"
+import { createAdminClient } from "@/lib/supabase/admin-client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,7 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/client"
+import { Loader2 } from "lucide-react"
 
 interface WithdrawalWithProfile {
   id: string
@@ -55,7 +56,7 @@ export default function AdminWithdrawalsPage() {
 
   const fetchWithdrawals = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createAdminClient()
       const { data, error } = await supabase
         .from("withdrawal_requests")
         .select(`
@@ -70,7 +71,7 @@ export default function AdminWithdrawalsPage() {
       if (error) throw error
       setWithdrawals(data || [])
     } catch (error) {
-      console.error("Error fetching withdrawals:", error)
+      console.error("[v0] Error fetching withdrawals:", error)
       toast({
         variant: "destructive",
         title: "Error",
@@ -133,7 +134,7 @@ export default function AdminWithdrawalsPage() {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading withdrawals...</div>
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       </AdminLayout>
     )
@@ -141,14 +142,14 @@ export default function AdminWithdrawalsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Withdrawal Requests</h1>
-          <p className="text-muted-foreground">Review and approve withdrawal requests</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Withdrawal Requests</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Review and approve withdrawal requests</p>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
@@ -163,7 +164,7 @@ export default function AdminWithdrawalsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount Pending</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-xl sm:text-2xl font-bold">
                 ₦{pendingWithdrawals.reduce((sum, w) => sum + w.amount, 0).toLocaleString()}
               </div>
             </CardContent>
@@ -182,19 +183,19 @@ export default function AdminWithdrawalsPage() {
         {/* Pending Withdrawals */}
         <Card>
           <CardHeader>
-            <CardTitle>Pending Requests</CardTitle>
-            <CardDescription>Withdrawal requests awaiting approval</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Pending Requests</CardTitle>
+            <CardDescription className="text-sm">Withdrawal requests awaiting approval</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             {pendingWithdrawals.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Bank Details</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="whitespace-nowrap">User</TableHead>
+                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Bank Details</TableHead>
+                    <TableHead className="whitespace-nowrap">Date</TableHead>
+                    <TableHead className="whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -202,19 +203,25 @@ export default function AdminWithdrawalsPage() {
                     <TableRow key={withdrawal.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{withdrawal.profiles?.full_name || "Unknown"}</p>
-                          <p className="text-xs text-muted-foreground">{withdrawal.profiles?.email}</p>
+                          <p className="font-medium whitespace-nowrap">{withdrawal.profiles?.full_name || "Unknown"}</p>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">
+                            {withdrawal.profiles?.email}
+                          </p>
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold">₦{withdrawal.amount.toLocaleString()}</TableCell>
+                      <TableCell className="font-semibold whitespace-nowrap">
+                        ₦{withdrawal.amount.toLocaleString()}
+                      </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <p>{withdrawal.bank_name}</p>
-                          <p className="text-muted-foreground">{withdrawal.account_number}</p>
-                          <p className="text-muted-foreground">{withdrawal.account_name}</p>
+                          <p className="whitespace-nowrap">{withdrawal.bank_name}</p>
+                          <p className="text-muted-foreground whitespace-nowrap">{withdrawal.account_number}</p>
+                          <p className="text-muted-foreground whitespace-nowrap">{withdrawal.account_name}</p>
                         </div>
                       </TableCell>
-                      <TableCell>{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(withdrawal.created_at).toLocaleDateString()}
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button
@@ -242,19 +249,19 @@ export default function AdminWithdrawalsPage() {
         {/* Processed Withdrawals */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Processed Requests</CardTitle>
-            <CardDescription>Previously approved or rejected withdrawals</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Recent Processed Requests</CardTitle>
+            <CardDescription className="text-sm">Previously approved or rejected withdrawals</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             {processedWithdrawals.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Note</TableHead>
+                    <TableHead className="whitespace-nowrap">User</TableHead>
+                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Date</TableHead>
+                    <TableHead className="whitespace-nowrap">Note</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -262,11 +269,15 @@ export default function AdminWithdrawalsPage() {
                     <TableRow key={withdrawal.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{withdrawal.profiles?.full_name || "Unknown"}</p>
-                          <p className="text-xs text-muted-foreground">{withdrawal.profiles?.email}</p>
+                          <p className="font-medium whitespace-nowrap">{withdrawal.profiles?.full_name || "Unknown"}</p>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">
+                            {withdrawal.profiles?.email}
+                          </p>
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold">₦{withdrawal.amount.toLocaleString()}</TableCell>
+                      <TableCell className="font-semibold whitespace-nowrap">
+                        ₦{withdrawal.amount.toLocaleString()}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           className={
@@ -276,7 +287,9 @@ export default function AdminWithdrawalsPage() {
                           {withdrawal.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(withdrawal.created_at).toLocaleDateString()}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{withdrawal.admin_note || "-"}</TableCell>
                     </TableRow>
                   ))}

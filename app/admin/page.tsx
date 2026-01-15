@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createAdminClient } from "@/lib/supabase/admin-client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
 
 function checkAdminSession(): boolean {
   if (typeof window === "undefined") return false
@@ -19,7 +19,6 @@ function checkAdminSession(): boolean {
     const session = JSON.parse(sessionStr)
     if (!session.authenticated) return false
 
-    // Check if session expired
     if (new Date(session.expiresAt) < new Date()) {
       localStorage.removeItem("jdshark_admin_session")
       return false
@@ -32,7 +31,6 @@ function checkAdminSession(): boolean {
 }
 
 export default function AdminDashboard() {
-  const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [stats, setStats] = useState({
@@ -48,7 +46,6 @@ export default function AdminDashboard() {
   })
   const [recentUsers, setRecentUsers] = useState<any[]>([])
   const [pendingKYCUsers, setPendingKYCUsers] = useState<any[]>([])
-  const [topEarners, setTopEarners] = useState<any[]>([])
 
   useEffect(() => {
     const isAdmin = checkAdminSession()
@@ -64,22 +61,21 @@ export default function AdminDashboard() {
 
   async function fetchData() {
     try {
-      const [usersResult, walletsResult, investmentsResult, depositsResult, withdrawalsResult, earningsResult] =
-        await Promise.all([
-          supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-          supabase.from("wallets").select("balance"),
-          supabase.from("investments").select("*"),
-          supabase.from("deposit_requests").select("*").eq("status", "pending"),
-          supabase.from("withdrawal_requests").select("*").eq("status", "pending"),
-          supabase.from("mlm_earnings").select("user_id, amount, profiles!inner(full_name, email)"),
-        ])
+      const supabase = createAdminClient()
+
+      const [usersResult, walletsResult, investmentsResult, depositsResult, withdrawalsResult] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("wallets").select("balance"),
+        supabase.from("investments").select("*"),
+        supabase.from("deposit_requests").select("*").eq("status", "pending"),
+        supabase.from("withdrawal_requests").select("*").eq("status", "pending"),
+      ])
 
       const users = usersResult.data || []
       const wallets = walletsResult.data || []
       const investments = investmentsResult.data || []
       const deposits = depositsResult.data || []
       const withdrawals = withdrawalsResult.data || []
-      const earnings = earningsResult.data || []
 
       const totalBalance = wallets.reduce((sum: number, w: any) => sum + (w.balance || 0), 0)
       const pendingKYC = users.filter((u: any) => u.kyc_status === "pending").length
@@ -102,27 +98,8 @@ export default function AdminDashboard() {
 
       setRecentUsers(users.slice(0, 5))
       setPendingKYCUsers(users.filter((u: any) => u.kyc_status === "pending").slice(0, 10))
-
-      const earningsByUser: { [key: string]: { name: string; email: string; total: number } } = {}
-      earnings.forEach((earning: any) => {
-        const userId = earning.user_id
-        if (!earningsByUser[userId]) {
-          earningsByUser[userId] = {
-            name: earning.profiles?.full_name || "Unknown",
-            email: earning.profiles?.email || "",
-            total: 0,
-          }
-        }
-        earningsByUser[userId].total += earning.amount
-      })
-
-      setTopEarners(
-        Object.values(earningsByUser)
-          .sort((a, b) => b.total - a.total)
-          .slice(0, 5),
-      )
     } catch (error) {
-      console.error("Error fetching admin data:", error)
+      console.error("[v0] Error fetching admin data:", error)
     } finally {
       setLoading(false)
     }
@@ -132,7 +109,7 @@ export default function AdminDashboard() {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading dashboard...</div>
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       </AdminLayout>
     )
@@ -140,16 +117,16 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="space-y-8 animate-fade-in-up">
+      <div className="space-y-6 md:space-y-8 animate-fade-in-up">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Monitor platform activity and manage users</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Admin Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Monitor platform activity and manage users</p>
         </div>
 
         {(stats.pendingDeposits > 0 || stats.pendingWithdrawals > 0) && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
+            <AlertDescription className="text-sm">
               You have {stats.pendingDeposits > 0 && `${stats.pendingDeposits} pending deposit(s)`}
               {stats.pendingDeposits > 0 && stats.pendingWithdrawals > 0 && " and "}
               {stats.pendingWithdrawals > 0 && `${stats.pendingWithdrawals} pending withdrawal(s)`} that need attention.
@@ -157,7 +134,7 @@ export default function AdminDashboard() {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <Card className="hover:border-accent/50 transition-colors">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
@@ -195,13 +172,13 @@ export default function AdminDashboard() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Wallet Balance</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₦{stats.totalWalletBalance.toLocaleString()}</div>
+              <div className="text-xl sm:text-2xl font-bold">₦{stats.totalWalletBalance.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">All user balances</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           <Card className="hover:border-accent/50 transition-colors">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pending Deposits</CardTitle>
@@ -225,33 +202,33 @@ export default function AdminDashboard() {
 
         <Card className="hover:border-accent/50 transition-colors">
           <CardHeader>
-            <CardTitle>Recent Users</CardTitle>
-            <CardDescription>Latest registered users on the platform</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Recent Users</CardTitle>
+            <CardDescription className="text-sm">Latest registered users on the platform</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Base Structure</TableHead>
-                  <TableHead>Rank</TableHead>
-                  <TableHead>KYC Status</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <TableHead className="whitespace-nowrap">Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Email</TableHead>
+                  <TableHead className="whitespace-nowrap">Base Structure</TableHead>
+                  <TableHead className="whitespace-nowrap">Rank</TableHead>
+                  <TableHead className="whitespace-nowrap">KYC Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Joined</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentUsers.map((user: any) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.full_name || "Unknown"}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">{user.full_name || "Unknown"}</TableCell>
+                    <TableCell className="whitespace-nowrap">{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="capitalize">
+                      <Badge variant="outline" className="capitalize whitespace-nowrap">
                         {user.base_structure || "N/A"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="capitalize">
+                      <Badge variant="secondary" className="capitalize whitespace-nowrap">
                         {user.current_rank || "Unranked"}
                       </Badge>
                     </TableCell>
@@ -268,7 +245,9 @@ export default function AdminDashboard() {
                         {user.kyc_status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -278,68 +257,39 @@ export default function AdminDashboard() {
 
         <Card className="hover:border-accent/50 transition-colors">
           <CardHeader>
-            <CardTitle>Pending KYC Applications</CardTitle>
-            <CardDescription>Review and approve KYC submissions</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Pending KYC Applications</CardTitle>
+            <CardDescription className="text-sm">Review and approve KYC submissions</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             {pendingKYCUsers && pendingKYCUsers.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Submitted</TableHead>
+                    <TableHead className="whitespace-nowrap">Name</TableHead>
+                    <TableHead className="whitespace-nowrap">Email</TableHead>
+                    <TableHead className="whitespace-nowrap">Phone</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Submitted</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pendingKYCUsers.map((user: any) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.full_name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.phone || "N/A"}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{user.full_name}</TableCell>
+                      <TableCell className="whitespace-nowrap">{user.email}</TableCell>
+                      <TableCell className="whitespace-nowrap">{user.phone || "N/A"}</TableCell>
                       <TableCell>
-                        <Badge className="bg-yellow-100 text-yellow-800">{user.kyc_status}</Badge>
+                        <Badge className="bg-yellow-100 text-yellow-800 whitespace-nowrap">{user.kyc_status}</Badge>
                       </TableCell>
-                      <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             ) : (
               <p className="text-center text-muted-foreground py-8">No pending KYC applications</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="hover:border-accent/50 transition-colors">
-          <CardHeader>
-            <CardTitle>Top Earners</CardTitle>
-            <CardDescription>Users with highest referral earnings</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topEarners.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Total Earnings</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {topEarners.map((earner: any, idx: number) => (
-                    <TableRow key={idx}>
-                      <TableCell className="font-medium">{earner.name}</TableCell>
-                      <TableCell>{earner.email}</TableCell>
-                      <TableCell className="font-semibold text-secondary">₦{earner.total.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">No earnings data yet</p>
             )}
           </CardContent>
         </Card>
