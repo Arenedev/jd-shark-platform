@@ -55,14 +55,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Failed to create deposit request" }, { status: 500 })
     }
 
-    // Update pending deposits in wallet
-    await supabase
-      .from("wallets")
-      .update({
-        pending_deposits: supabase.rpc("increment_pending_deposits", { amount }),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", wallet.id)
+    // Deposit requests table already tracks pending deposits
 
     return NextResponse.json({
       message: "Deposit request created successfully",
