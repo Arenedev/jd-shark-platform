@@ -45,7 +45,7 @@ function NewInvestmentContent({ searchParams, router }: any) {
   const [portfolios, setPortfolios] = useState<any[]>([])
   const [formData, setFormData] = useState({
     amount: "",
-    lock_type: "none" as "none" | "1_year" | "10_year",
+    lock_type: "1_year" as "1_year",
     portfolio_id: portfolioIdFromUrl || "",
   })
 
@@ -167,18 +167,56 @@ function NewInvestmentContent({ searchParams, router }: any) {
 
       console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type)
 
-      // Create investment directly
+      // First, get user's wallet
+      const { data: wallet, error: walletError } = await supabase
+        .from("wallets")
+        .select("id")
+        .eq("user_id", userId)
+        .single()
+
+      if (walletError || !wallet) {
+        console.error("[v0] Wallet error:", walletError)
+        throw new Error("Could not find wallet")
+      }
+
+      // Create a deposit request first (required for RLS policy)
+      const depositRef = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+      const { data: depositRequest, error: depositError } = await supabase
+        .from("deposit_requests")
+        .insert({
+          user_id: userId,
+          wallet_id: wallet.id,
+          amount,
+          payment_method: "internal_transfer",
+          status: "approved",
+          transaction_reference: depositRef,
+          approved_at: new Date().toISOString(),
+          approved_by: userId,
+        })
+        .select()
+        .single()
+
+      if (depositError || !depositRequest) {
+        console.error("[v0] Deposit request creation error:", depositError)
+        throw new Error("Could not create deposit request")
+      }
+
+      console.log("[v0] Deposit request created:", depositRequest.id)
+
+      // Now create investment linked to deposit request
       const { data: investment, error: investmentError } = await supabase
         .from("investments")
         .insert({
           user_id: userId,
+          deposit_request_id: depositRequest.id,
           principal: amount,
-          lock_type: formData.lock_type,
-          base_roi: 1.0,
-          effective_roi: formData.lock_type === "1_year" ? 6.0 : formData.lock_type === "10_year" ? 11.0 : 1.0,
-          lcr_bonus: formData.lock_type === "1_year" ? 5.0 : formData.lock_type === "10_year" ? 10.0 : 0,
-          status: "pending",
+          lock_type: "1_year",
+          base_roi: 10.0,
+          effective_roi: 15.0, // 10% base + 5% LCR bonus
+          lcr_bonus: 5.0,
+          status: "approved",
           total_returns: 0,
+          approved_at: new Date().toISOString(),
           returns_start_at: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000).toISOString(),
         })
         .select()
@@ -210,8 +248,8 @@ function NewInvestmentContent({ searchParams, router }: any) {
         console.log("[v0] Wallet updated successfully")
       }
 
-      setSuccess("Investment created successfully! Your investment is pending admin approval.")
-      setFormData({ amount: "", lock_type: "none", portfolio_id: "" })
+      setSuccess("Investment created successfully! You will start earning monthly returns.")
+      setFormData({ amount: "", lock_type: "1_year", portfolio_id: "" })
 
       // Redirect after 2 seconds
       setTimeout(() => {
@@ -294,16 +332,14 @@ function NewInvestmentContent({ searchParams, router }: any) {
                   disabled={submitting}
                   className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground"
                 >
-                  <option value="none">No Lock (1.0% ROI/month)</option>
-                  <option value="1_year">1 Year Lock (6.0% ROI/month + 5% LCR bonus)</option>
-                  <option value="10_year">10 Year Lock (11.0% ROI/month + 10% LCR bonus)</option>
+                  <option value="1_year">1 Year Lock (15% ROI/month)</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Longer lock periods provide higher returns through LCR bonuses</p>
+                <p className="text-xs text-muted-foreground">Lock your investment for 1 year to earn monthly returns</p>
               </div>
 
               <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                 <p className="text-sm text-amber-900 dark:text-amber-100">
-                  <span className="font-semibold">Note:</span> Your investment will be pending admin approval. Returns will start accruing 4 months after approval.
+                  <span className="font-semibold">Note:</span> Your investment will be activated immediately. You will start earning monthly returns on your investment.
                 </p>
               </div>
 
