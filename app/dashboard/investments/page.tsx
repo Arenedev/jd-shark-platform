@@ -124,6 +124,10 @@ export default function InvestmentsPage() {
   const totalReturns = investments.reduce((sum, inv) => sum + Number(inv.total_returns || 0), 0)
   const activeCount = investments.filter((inv) => inv.status === "active").length
 
+  // Check if user should see "Make Deposit" button
+  const walletBalance = profile?.wallet_balance || 0
+  const shouldShowMakeDeposit = investments.length === 0
+
   return (
     <DashboardLayout profile={profile}>
       <div className="space-y-8">
@@ -172,7 +176,11 @@ export default function InvestmentsPage() {
                 <CardContent className="pt-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground">Investment #{investment.id.slice(0, 8)}</h3>
+                      <Link href={`/dashboard/investments/${investment.id}`} className="hover:underline">
+                        <h3 className="text-lg font-semibold text-foreground cursor-pointer">
+                          Investment #{investment.id.slice(0, 8)}
+                        </h3>
+                      </Link>
                       <p className="text-sm text-muted-foreground">
                         Approved on {new Date(investment.approved_at).toLocaleDateString()}
                       </p>
@@ -233,10 +241,23 @@ export default function InvestmentsPage() {
           <Card className="text-center py-12">
             <CardContent>
               <p className="text-muted-foreground mb-4">No investments yet</p>
-              <p className="text-sm text-muted-foreground mb-6">Make a deposit to create your first investment</p>
-              <Link href="/dashboard/wallet-funding">
-                <Button className="bg-primary hover:bg-primary/90">Make a Deposit</Button>
-              </Link>
+              {walletBalance > 0 ? (
+                <>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    You have ₦{walletBalance.toLocaleString()} available. Create your first investment now!
+                  </p>
+                  <Link href="/dashboard/investments/new">
+                    <Button className="bg-primary hover:bg-primary/90">Create Investment</Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground mb-6">Make a deposit to create your first investment</p>
+                  <Link href="/dashboard/wallet-funding">
+                    <Button className="bg-primary hover:bg-primary/90">Make a Deposit</Button>
+                  </Link>
+                </>
+              )}
             </CardContent>
           </Card>
         )}
