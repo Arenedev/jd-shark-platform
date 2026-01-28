@@ -68,6 +68,22 @@ export default function DashboardPage() {
         try {
           const userBalances = await getUserBalances(userId)
           setBalances(userBalances)
+          
+          // Update user rank when personal capital changes
+          try {
+            const response = await fetch(`/api/rank/update`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId }),
+            })
+            if (response.ok) {
+              console.log("[v0] User rank updated successfully")
+              // Reload profile to get updated rank
+              window.location.reload()
+            }
+          } catch (rankError) {
+            console.log("[v0] Rank update error (non-blocking):", rankError)
+          }
         } catch (error) {
           console.error("[v0] Error loading balances:", error)
         }
