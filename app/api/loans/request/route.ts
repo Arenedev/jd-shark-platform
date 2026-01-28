@@ -3,14 +3,21 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
+    
+    // Get the user from the request headers (for server-side auth context)
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser()
 
-    if (authError || !user) {
-      console.error("[v0] Auth error:", authError)
+    if (authError) {
+      console.error("[v0] Auth error:", authError?.message)
+      return NextResponse.json({ error: "Auth session missing" }, { status: 401 })
+    }
+
+    if (!user) {
+      console.error("[v0] No user in auth context")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -22,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Get user profile to check eligibility
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("base_structure, personal_capital")
+      .select("base_structure, personal_capital, full_name, email")
       .eq("id", user.id)
       .single()
 
