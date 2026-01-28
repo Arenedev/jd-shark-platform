@@ -107,15 +107,11 @@ export default function InvestmentsPage() {
     }).format(amount)
   }
 
-  const getLockTypeLabel = (lockType: string) => {
-    switch (lockType) {
-      case "1_year":
-        return "1 Year LCR"
-      case "10_year":
-        return "10 Year LCR"
-      default:
-        return "No Lock"
+  const getLockTypeLabel = (roiPercentage: number) => {
+    if (roiPercentage === 15) {
+      return "1 Year Lock"
     }
+    return "Standard"
   }
 
   if (loading) {
@@ -306,55 +302,49 @@ export default function InvestmentsPage() {
                           </h3>
                         </Link>
                         <p className="text-sm text-muted-foreground">
-                          Approved on {new Date(investment.approved_at).toLocaleDateString()}
+                          Created on {new Date(investment.created_at).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex gap-2">
                         <Badge className="capitalize bg-primary/10 text-primary hover:bg-primary/10">
                           {investment.status}
                         </Badge>
-                        <Badge variant="outline">{getLockTypeLabel(investment.lock_type)}</Badge>
+                        <Badge variant="outline">{getLockTypeLabel(investment.roi_percentage)}</Badge>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
                       <div>
-                        <p className="text-xs text-muted-foreground">Principal</p>
-                        <p className="text-lg font-semibold">{formatCurrency(Number(investment.principal))}</p>
+                        <p className="text-xs text-muted-foreground">Amount</p>
+                        <p className="text-lg font-semibold">{formatCurrency(Number(investment.amount))}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Effective ROI</p>
-                        <p className="text-lg font-semibold">{investment.effective_roi}%/month</p>
-                        {investment.lcr_bonus > 0 && (
-                          <p className="text-xs text-green-600">+{investment.lcr_bonus}% LCR bonus</p>
-                        )}
+                        <p className="text-xs text-muted-foreground">ROI Rate</p>
+                        <p className="text-lg font-semibold">{investment.roi_percentage}%</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Total Returns</p>
-                        <p className="text-lg font-semibold text-green-600">
-                          {formatCurrency(Number(investment.total_returns || 0))}
+                        <p className="text-xs text-muted-foreground">Start Date</p>
+                        <p className="text-lg font-semibold">
+                          {new Date(investment.start_date).toLocaleDateString()}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Returns Start</p>
+                        <p className="text-xs text-muted-foreground">Maturity Date</p>
                         <p className="text-lg font-semibold">
-                          {new Date(investment.returns_start_at).toLocaleDateString()}
+                          {new Date(investment.maturity_date).toLocaleDateString()}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Next Return</p>
+                        <p className="text-xs text-muted-foreground">Auto Reinvest</p>
                         <p className="text-lg font-semibold">
-                          {investment.next_return_date
-                            ? new Date(investment.next_return_date).toLocaleDateString()
-                            : "Pending"}
+                          {investment.auto_reinvest ? "Yes" : "No"}
                         </p>
                       </div>
                     </div>
 
-                    {new Date(investment.returns_start_at) > new Date() && (
-                      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-blue-800 dark:text-blue-200">
-                        Returns will start accruing on {new Date(investment.returns_start_at).toLocaleDateString()} (4
-                        months after approval)
+                    {investment.status === "active" && (
+                      <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4 text-sm text-green-800 dark:text-green-200">
+                        Your investment is active and earning {investment.roi_percentage}% returns until {new Date(investment.maturity_date).toLocaleDateString()}
                       </div>
                     )}
                   </CardContent>
