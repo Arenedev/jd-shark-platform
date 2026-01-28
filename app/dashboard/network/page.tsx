@@ -21,6 +21,7 @@ export default function NetworkPage() {
   const [rankHistory, setRankHistory] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -30,10 +31,12 @@ export default function NetworkPage() {
       } = await supabase.auth.getUser()
 
       if (!user) {
+        console.log("[v0] Network page: No user, redirecting to login")
         router.push("/auth/login")
         return
       }
 
+      console.log("[v0] Network page: User ID set:", user.id)
       setUserId(user.id)
     }
 
@@ -42,21 +45,27 @@ export default function NetworkPage() {
 
   useEffect(() => {
     const loadNetworkData = async () => {
-      if (!userId) return
+      if (!userId) {
+        console.log("[v0] Network page: No userId, skipping load")
+        return
+      }
 
       try {
+        console.log("[v0] Network page: Loading network data for user:", userId)
         const [stats, ranksData, history] = await Promise.all([
           getNetworkStats(userId),
           getRanks(),
           getRankHistory(userId),
         ])
 
+        console.log("[v0] Network page: Data loaded - stats:", stats, "ranks:", ranksData.length)
         setNetworkStats(stats)
         setRanks(ranksData)
         setRankHistory(history)
+        setLoading(false)
       } catch (error) {
-        console.error("[v0] Error loading network data:", error)
-      } finally {
+        console.error("[v0] Network page: Error loading network data:", error)
+        setError(error instanceof Error ? error.message : "Failed to load network data")
         setLoading(false)
       }
     }
@@ -93,8 +102,35 @@ export default function NetworkPage() {
     }
   }
 
-  if (loading || profileLoading || !profile) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading network data...</div>
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout profile={profile}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Error Loading Network Data</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!networkStats) {
+    return (
+      <DashboardLayout profile={profile}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Network Data Not Available</h2>
+            <p className="text-muted-foreground">Unable to load your network information</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
@@ -134,7 +170,7 @@ export default function NetworkPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₦{(networkStats?.personalCapital || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold">₦{networkStats && typeof networkStats.personalCapital === "number" ? networkStats.personalCapital.toLocaleString() : "0"}</div>
             </CardContent>
           </Card>
 
@@ -146,7 +182,7 @@ export default function NetworkPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₦{(networkStats?.networkCapital || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold">₦{networkStats && typeof networkStats.networkCapital === "number" ? networkStats.networkCapital.toLocaleString() : "0"}</div>
             </CardContent>
           </Card>
 
@@ -233,7 +269,7 @@ export default function NetworkPage() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      PC: ₦{history.pc_at_time?.toLocaleString()} | NC: ₦{history.nc_at_time?.toLocaleString()}
+                      PC: ₦{history.pc_at_time ? history.pc_at_time.toLocaleString() : "0"} | NC: ₦{history.nc_at_time ? history.nc_at_time.toLocaleString() : "0"}
                     </p>
                     <p className="text-xs text-muted-foreground">{new Date(history.created_at).toLocaleDateString()}</p>
                   </div>
@@ -268,19 +304,19 @@ export default function NetworkPage() {
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="text-muted-foreground">Min PC:</span>{" "}
-                      <span className="font-medium">₦{rank.min_pc.toLocaleString()}</span>
+                      <span className="font-medium">₦{(rank.min_personal_capital || 0).toLocaleString()}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Min NC:</span>{" "}
-                      <span className="font-medium">₦{rank.min_nc?.toLocaleString() || "N/A"}</span>
+                      <span className="font-medium">₦{rank.min_network_capital ? rank.min_network_capital.toLocaleString() : "N/A"}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">PC ROI:</span>{" "}
-                      <span className="font-medium">{rank.pc_roi_percentage}%</span>
+                      <span className="font-medium">{rank.pc_roi_percentage || 0}%</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">NC Commission:</span>{" "}
-                      <span className="font-medium">{rank.nc_commission_percentage}%</span>
+                      <span className="font-medium">{rank.nc_commission_percentage || 0}%</span>
                     </div>
                   </div>
                 </div>
