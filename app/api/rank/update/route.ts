@@ -5,6 +5,11 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
 
+    if (!supabase) {
+      console.error("[v0] Supabase client not initialized")
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+    }
+
     // Verify user is authenticated
     const {
       data: { user },
@@ -12,6 +17,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (userError || !user) {
+      console.log("[v0] User not authenticated:", userError?.message)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

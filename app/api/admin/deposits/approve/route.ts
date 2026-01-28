@@ -120,6 +120,17 @@ export async function POST(request: NextRequest) {
           .eq("id", deposit.user_id)
       }
 
+      // Update user rank based on new personal capital
+      try {
+        await supabase.rpc("update_user_rank", {
+          p_user_id: deposit.user_id,
+        })
+        console.log("[v0] User rank updated successfully for user:", deposit.user_id)
+      } catch (rankError) {
+        console.log("[v0] Rank update warning (non-blocking):", rankError)
+        // Non-blocking - rank update failure shouldn't prevent deposit approval
+      }
+
       // Calculate returns start date (4 months after approval)
       const approvedDate = new Date(now)
       const returnsStartDate = new Date(approvedDate)

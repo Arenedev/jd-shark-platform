@@ -30,6 +30,8 @@ export default function WalletFundingPage() {
   const router = useRouter()
   const [amount, setAmount] = useState<number>(50000)
   const [paymentMethod, setPaymentMethod] = useState<string>("bank_transfer")
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
+  const [paymentProofPreview, setPaymentProofPreview] = useState<string>("")
   const [paymentProofUrl, setPaymentProofUrl] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -61,6 +63,28 @@ export default function WalletFundingPage() {
     fetchData()
   }, [router])
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        setError("Please select an image file")
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError("File size must be less than 5MB")
+        return
+      }
+      setPaymentProofFile(file)
+      setError(null)
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPaymentProofPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -76,14 +100,30 @@ export default function WalletFundingPage() {
       return
     }
 
-    if (!paymentProofUrl) {
-      setError("Payment proof URL is required")
+    if (!paymentProofFile) {
+      setError("Payment proof image is required")
       return
     }
 
     setLoading(true)
 
     try {
+      // Upload file to Vercel Blob
+      const formData = new FormData()
+      formData.append("file", paymentProofFile)
+
+      const uploadResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload payment proof")
+      }
+
+      const uploadData = await uploadResponse.json()
+      const paymentProofUrl = uploadData.url
+
       const response = await fetch("/api/deposits/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,7 +148,8 @@ export default function WalletFundingPage() {
 
       // Reset form
       setAmount(50000)
-      setPaymentProofUrl("")
+      setPaymentProofFile(null)
+      setPaymentProofPreview("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit deposit request")
     } finally {
@@ -249,21 +290,27 @@ export default function WalletFundingPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="paymentProof">Payment Proof (Required)</Label>
-                  <div className="flex gap-2">
+                  <div className="border-2 border-dashed border-border rounded-lg p-4">
                     <Input
                       id="paymentProof"
-                      type="url"
-                      placeholder="https://imgur.com/... or image URL"
-                      value={paymentProofUrl}
-                      onChange={(e) => setPaymentProofUrl(e.target.value)}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="cursor-pointer"
                       required
                     />
-                    <Button type="button" variant="outline" size="icon">
-                      <Upload className="w-4 h-4" />
-                    </Button>
+                    {paymentProofPreview && (
+                      <div className="mt-4">
+                        <img
+                          src={paymentProofPreview || "/placeholder.svg"}
+                          alt="Payment proof preview"
+                          className="max-w-full max-h-48 rounded"
+                        />
+                      </div>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Required: Upload your payment receipt to an image host (e.g., Imgur) and paste the URL here
+                    Upload a screenshot or photo of your payment receipt (PNG, JPG, max 5MB)
                   </p>
                 </div>
 

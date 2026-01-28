@@ -33,6 +33,11 @@ export async function POST(request: NextRequest) {
         email,
         full_name: fullName || "User",
         kyc_status: "pending",
+        base_structure: "investor",
+        current_rank: "unranked",
+        personal_capital: 0,
+        network_capital: 0,
+        grand_network_capital: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

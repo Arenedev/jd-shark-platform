@@ -2,19 +2,13 @@ import { createBrowserClient } from "@/lib/supabase/client"
 
 export interface Investment {
   id: string
-  user_id: string
-  deposit_request_id: string
-  principal: number
-  approved_at: string
-  returns_start_at: string
-  lock_type: "none" | "1_year" | "10_year"
-  base_roi: number
-  lcr_bonus: number
-  effective_roi: number
+  portfolio_id: string
+  amount: number
+  start_date: string
+  maturity_date: string
+  roi_percentage: number
   status: string
-  total_returns: number
-  last_return_date: string | null
-  next_return_date: string | null
+  auto_reinvest: boolean
   created_at: string
   updated_at: string
 }
@@ -51,10 +45,28 @@ export async function getSystemConfig(key: string): Promise<string | null> {
 export async function getUserInvestments(userId: string): Promise<Investment[]> {
   const supabase = createBrowserClient()
 
+  // Get user's portfolios first
+  const { data: portfolios, error: portfoliosError } = await supabase
+    .from("portfolios")
+    .select("id")
+    .eq("current_owner_id", userId)
+
+  if (portfoliosError || !portfolios) {
+    console.error("[v0] Error fetching portfolios:", portfoliosError)
+    return []
+  }
+
+  const portfolioIds = portfolios.map((p) => p.id)
+
+  if (portfolioIds.length === 0) {
+    return []
+  }
+
+  // Get investments for those portfolios
   const { data, error } = await supabase
     .from("investments")
     .select("*")
-    .eq("user_id", userId)
+    .in("portfolio_id", portfolioIds)
     .order("created_at", { ascending: false })
 
   if (error) {

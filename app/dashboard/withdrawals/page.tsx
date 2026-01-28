@@ -44,7 +44,6 @@ export default function WithdrawalsPage() {
     bankName: "",
     accountNumber: "",
     accountName: "",
-    proofOfPaymentUrl: "", // Added proof of payment field
   })
 
   useEffect(() => {
@@ -117,7 +116,6 @@ export default function WithdrawalsPage() {
           bankName: formData.bankName,
           accountNumber: formData.accountNumber,
           accountName: formData.accountName,
-          proofOfPaymentUrl: formData.proofOfPaymentUrl,
         }),
       })
 
@@ -132,7 +130,7 @@ export default function WithdrawalsPage() {
         description: "Withdrawal request submitted successfully",
       })
 
-      setFormData({ amount: "", bankName: "", accountNumber: "", accountName: "", proofOfPaymentUrl: "" })
+      setFormData({ amount: "", bankName: "", accountNumber: "", accountName: "" })
       await fetchWithdrawals()
     } catch (error) {
       toast({
@@ -227,26 +225,6 @@ export default function WithdrawalsPage() {
                     placeholder="e.g., John Doe"
                     required
                   />
-                </div>
-
-                <div>
-                  <Label htmlFor="proofOfPaymentUrl">Bank Account Proof (Optional)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="proofOfPaymentUrl"
-                      name="proofOfPaymentUrl"
-                      type="url"
-                      value={formData.proofOfPaymentUrl}
-                      onChange={handleChange}
-                      placeholder="https://... (bank statement or account proof)"
-                    />
-                    <Button type="button" variant="outline" size="icon">
-                      <Upload className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Optional: Upload proof of bank account ownership for faster processing
-                  </p>
                 </div>
 
                 <Button type="submit" disabled={submitting} className="w-full">
