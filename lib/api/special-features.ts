@@ -77,10 +77,13 @@ export async function getUserIncentives(userId: string): Promise<Incentive[]> {
 
   const { data, error } = await supabase
     .from("incentives")
-    .select("*")
+    .select("id, user_id, incentive_type, title, description, value_amount, status, awarded_at, claimed_at, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
 
-  if (error) throw error
+  if (error) {
+    console.error("[v0] Error fetching incentives:", error)
+    throw error
+  }
   return data || []
 }
