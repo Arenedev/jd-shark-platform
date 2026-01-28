@@ -3,19 +3,19 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    // createClient() is async and MUST be awaited to get the Supabase client
     const supabase = await createClient()
 
-    // Use getUser() to get the authenticated user
+    // Use getSession() instead of getUser() - this works reliably in Route Handlers
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (!user) {
-      console.error("[v0] No user found in auth")
+    if (!session) {
+      console.error("[v0] No session found")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const user = session.user
     console.log("[v0] Processing loan request for user:", user.id)
 
     const body = await request.json()
