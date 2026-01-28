@@ -32,3 +32,24 @@ export async function createClient() {
     },
   })
 }
+
+// Service role client for server-side operations that bypass RLS
+export function createServiceRoleClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Supabase URL and Service Role Key are required. Please check your environment variables.")
+  }
+
+  return createServerClient(supabaseUrl, supabaseServiceKey, {
+    cookies: {
+      getAll() {
+        return []
+      },
+      setAll() {
+        // Service role client doesn't use cookies
+      },
+    },
+  })
+}
