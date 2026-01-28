@@ -1,44 +1,78 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard/layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { getUserInvestments, type Investment } from "@/lib/api/investments-phase1"
 import { Loader2 } from "lucide-react"
 
 export default function InvestmentsPage() {
-  const { profile, loading: profileLoading } = useUserProfile()
+  const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
+  const { profile, loading: profileLoading } = useUserProfile(userId)
   const [investments, setInvestments] = useState<Investment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Get authenticated user ID first
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) {
+          console.log("[v0] Investments page: No user, redirecting to login")
+          router.push("/auth/login")
+          return
+        }
+
+        console.log("[v0] Investments page: User authenticated:", user.id)
+        setUserId(user.id)
+      } catch (err) {
+        console.error("[v0] Investments page: Auth check error:", err)
+        router.push("/auth/login")
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
+  // Load investments when userId is available
   useEffect(() => {
     async function loadInvestments() {
-      if (!profile?.id) return
+      if (!userId) {
+        console.log("[v0] Investments page: No userId yet, skipping load")
+        return
+      }
 
       try {
-        console.log("[v0] Loading investments for user:", profile.id)
-        const data = await getUserInvestments(profile.id)
-        console.log("[v0] Investments loaded:", data.length)
+        console.log("[v0] Investments page: Loading investments for user:", userId)
+        const data = await getUserInvestments(userId)
+        console.log("[v0] Investments page: Investments loaded:", data.length)
         setInvestments(data)
+        setLoading(false)
       } catch (err) {
-        console.error("[v0] Error loading investments:", err)
+        console.error("[v0] Investments page: Error loading investments:", err)
         setError("Failed to load investments")
-      } finally {
         setLoading(false)
       }
     }
 
-    if (profile?.id) {
+    if (userId) {
       loadInvestments()
     }
-  }, [profile?.id])
+  }, [userId])
 
-  if (profileLoading || loading) {
+  if (loading) {
     return (
       <DashboardLayout profile={profile}>
         <div className="min-h-screen flex items-center justify-center">
@@ -90,6 +124,10 @@ export default function InvestmentsPage() {
   const totalReturns = investments.reduce((sum, inv) => sum + Number(inv.total_returns || 0), 0)
   const activeCount = investments.filter((inv) => inv.status === "active").length
 
+  // Check if user should see "Make Deposit" button
+  const walletBalance = profile?.wallet_balance || 0
+  const shouldShowMakeDeposit = investments.length === 0
+
   return (
     <DashboardLayout profile={profile}>
       <div className="space-y-8">
@@ -138,7 +176,11 @@ export default function InvestmentsPage() {
                 <CardContent className="pt-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground">Investment #{investment.id.slice(0, 8)}</h3>
+                      <Link href={`/dashboard/investments/${investment.id}`} className="hover:underline">
+                        <h3 className="text-lg font-semibold text-foreground cursor-pointer">
+                          Investment #{investment.id.slice(0, 8)}
+                        </h3>
+                      </Link>
                       <p className="text-sm text-muted-foreground">
                         Approved on {new Date(investment.approved_at).toLocaleDateString()}
                       </p>
@@ -199,10 +241,23 @@ export default function InvestmentsPage() {
           <Card className="text-center py-12">
             <CardContent>
               <p className="text-muted-foreground mb-4">No investments yet</p>
-              <p className="text-sm text-muted-foreground mb-6">Make a deposit to create your first investment</p>
-              <Link href="/dashboard/wallet-funding">
-                <Button className="bg-primary hover:bg-primary/90">Make a Deposit</Button>
-              </Link>
+              {walletBalance > 0 ? (
+                <>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    You have ₦{walletBalance.toLocaleString()} available. Create your first investment now!
+                  </p>
+                  <Link href="/dashboard/investments/new">
+                    <Button className="bg-primary hover:bg-primary/90">Create Investment</Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground mb-6">Make a deposit to create your first investment</p>
+                  <Link href="/dashboard/wallet-funding">
+                    <Button className="bg-primary hover:bg-primary/90">Make a Deposit</Button>
+                  </Link>
+                </>
+              )}
             </CardContent>
           </Card>
         )}
