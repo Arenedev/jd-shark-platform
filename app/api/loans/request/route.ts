@@ -3,20 +3,19 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    
-    // Use getSession instead of getUser for better reliability in Route Handlers
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
+    // DO NOT await createClient() - this is critical for auth context to work
+    const supabase = createClient()
 
-    if (sessionError || !session) {
-      console.error("[v0] Session error:", sessionError?.message || "No session found")
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    // Use getUser() to get the authenticated user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      console.error("[v0] No user found in auth")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const user = session.user
     console.log("[v0] Processing loan request for user:", user.id)
 
     const body = await request.json()
@@ -65,7 +64,7 @@ export async function POST(request: NextRequest) {
     const months = 12
     const totalDue = amount * (1 + monthlyRate * months)
 
-    console.log("[v0] Loan request details:", { amount, monthlyRate, months, totalDue })
+    console.log("[v0] Creating loan:", { userId: user.id, amount, totalDue })
 
     // Create loan request
     const { data: loan, error: loanError } = await supabase
@@ -90,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ loan, success: true })
   } catch (error: any) {
-    console.error("[v0] Loan request error:", error?.message)
+    console.error("[v0] Loan request error:", error?.message || error)
     return NextResponse.json({ error: "Failed to process loan request" }, { status: 500 })
   }
 }
