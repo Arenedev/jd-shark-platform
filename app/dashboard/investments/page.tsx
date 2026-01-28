@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { getUserInvestments, type Investment } from "@/lib/api/investments-phase1"
 import { Loader2, Wallet, FolderOpen } from "lucide-react"
+import { formatCurrency } from "@/utils/currency"
 
 export default function InvestmentsPage() {
   const router = useRouter()
@@ -98,13 +99,10 @@ export default function InvestmentsPage() {
     }
   }, [userId])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
+  const formatDate = (dateString: string) => {
+    // Parse date string as YYYY-MM-DD without timezone conversion
+    const [year, month, day] = dateString.split("-")
+    return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString()
   }
 
   const getLockTypeLabel = (roiPercentage: number) => {
@@ -328,13 +326,13 @@ export default function InvestmentsPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">Start Date</p>
                         <p className="text-lg font-semibold">
-                          {new Date(investment.start_date).toLocaleDateString()}
+                          {formatDate(investment.start_date)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Maturity Date</p>
                         <p className="text-lg font-semibold">
-                          {new Date(investment.maturity_date).toLocaleDateString()}
+                          {formatDate(investment.maturity_date)}
                         </p>
                       </div>
                       <div>

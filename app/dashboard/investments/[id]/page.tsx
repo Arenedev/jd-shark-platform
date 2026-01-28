@@ -17,6 +17,12 @@ import { Spinner } from "@/components/ui/spinner"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import DashboardLayout from "@/components/dashboard/layout"
 
+const formatDate = (dateString: string) => {
+  // Parse date string as YYYY-MM-DD without timezone conversion
+  const [year, month, day] = dateString.split("-")
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString()
+}
+
 function InvestmentPageContent() {
   const params = useParams()
   const router = useRouter()
@@ -461,12 +467,12 @@ function InvestmentDetailsContent({ params, router }: any) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground mb-1">Start Date</p>
-              <p className="text-lg font-semibold">{investment ? new Date(investment.start_date).toLocaleDateString() : "Loading..."}</p>
+              <p className="text-lg font-semibold">{investment ? formatDate(investment.start_date) : "Loading..."}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Maturity Date</p>
               <p className="text-lg font-semibold">
-                {investment ? new Date(investment.maturity_date).toLocaleDateString() : "Loading..."}
+                {investment ? formatDate(investment.maturity_date) : "Loading..."}
               </p>
             </div>
             <div>
