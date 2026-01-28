@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { formatCurrency } from "@/lib/utils"
 import { checkAdminSession } from "@/lib/admin-auth"
-import { TrendingUp, Calendar, DollarSign, Lock } from "lucide-react"
+import { TrendingUp, Calendar, DollarSign, Lock, RefreshCw } from "lucide-react"
 
 export default function AdminInvestmentsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [investments, setInvestments] = useState<any[]>([])
   const [stats, setStats] = useState({
     totalInvestments: 0,
@@ -29,13 +31,17 @@ export default function AdminInvestmentsPage() {
     }
 
     fetchInvestments()
+    
+    // Set up auto-refresh every 30 seconds
+    const interval = setInterval(fetchInvestments, 30000)
+    return () => clearInterval(interval)
   }, [router])
 
   const fetchInvestments = async () => {
     try {
       const supabase = createBrowserClient()
 
-      const { data: investmentsData } = await supabase
+      const { data: investmentsData, error } = await supabase
         .from("investments")
         .select(`
           *,
@@ -46,7 +52,11 @@ export default function AdminInvestmentsPage() {
         `)
         .order("created_at", { ascending: false })
 
-      if (investmentsData) {
+      if (error) {
+        console.error("[v0] Error fetching investments:", error)
+        setInvestments([])
+      } else if (investmentsData) {
+        console.log("[v0] Investments data fetched:", investmentsData.length)
         setInvestments(investmentsData)
 
         const totalPrincipal = investmentsData.reduce((sum, inv) => sum + (inv.principal || 0), 0)
@@ -61,10 +71,16 @@ export default function AdminInvestmentsPage() {
         })
       }
     } catch (error) {
-      console.error("Error fetching investments:", error)
+      console.error("[v0] Error fetching investments:", error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  const handleManualRefresh = async () => {
+    setRefreshing(true)
+    await fetchInvestments()
   }
 
   if (loading) {
@@ -83,9 +99,20 @@ export default function AdminInvestmentsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Investments Overview</h1>
-          <p className="text-muted-foreground mt-2">Monitor all investment activities</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Investments Overview</h1>
+            <p className="text-muted-foreground mt-2">Monitor all investment activities</p>
+          </div>
+          <Button
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
