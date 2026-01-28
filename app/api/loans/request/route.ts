@@ -3,22 +3,20 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    // Create client with request context for proper auth - MUST AWAIT
     const supabase = await createClient()
     
-    console.log("[v0] Supabase client created")
-    
-    // Get the user - the auth context should be available from cookies
+    // Use getSession instead of getUser for better reliability in Route Handlers
     const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-    if (authError || !user) {
-      console.error("[v0] Auth error:", authError?.message || "No user found")
+    if (sessionError || !session) {
+      console.error("[v0] Session error:", sessionError?.message || "No session found")
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
+    const user = session.user
     console.log("[v0] Processing loan request for user:", user.id)
 
     const body = await request.json()
