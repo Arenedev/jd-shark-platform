@@ -165,29 +165,29 @@ function NewInvestmentContent({ searchParams, router }: any) {
       const amount = Number.parseFloat(formData.amount)
       const supabase = createClient()
 
-      console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type)
+      console.log("[v0] Creating investment for user:", userId, "amount:", amount, "portfolio_id:", formData.portfolio_id)
+
+      if (!formData.portfolio_id) {
+        setError("Please select a portfolio")
+        setSubmitting(false)
+        return
+      }
 
       const today = new Date()
       const startDate = today.toISOString().split("T")[0]
-      const unlockDate = new Date(today.getTime() + 4 * 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
       const maturityDate = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
 
-      // Create investment in lcr_investments table (correct table for LCR investments)
+      // Create investment in investments table (linked to portfolio)
       const { data: investment, error: investmentError } = await supabase
-        .from("lcr_investments")
+        .from("investments")
         .insert({
-          user_id: userId,
-          principal_amount: amount,
-          lock_period_years: 1,
-          bonus_rate: 5.0,
-          base_roi_rate: 10.0,
-          effective_roi_rate: 15.0,
+          portfolio_id: formData.portfolio_id,
+          amount: amount,
           start_date: startDate,
-          unlock_date: unlockDate,
           maturity_date: maturityDate,
+          roi_percentage: 15.0,
           status: "active",
           auto_reinvest: false,
-          total_earned: 0,
         })
         .select()
 
@@ -380,15 +380,11 @@ function InvestmentDetailsContent({ params, router }: any) {
     }
   }, [params.id, router])
 
-  const getLockTypeLabel = (lockPeriodYears: number) => {
-    switch (lockPeriodYears) {
-      case 1:
-        return "1 Year LCR"
-      case 10:
-        return "10 Year LCR"
-      default:
-        return "No Lock"
+  const getLockTypeLabel = (ratePercentage: number) => {
+    if (ratePercentage === 15.0) {
+      return "1 Year Lock"
     }
+    return "Standard"
   }
 
   const formatCurrency = (amount: number) => {
@@ -413,40 +409,37 @@ function InvestmentDetailsContent({ params, router }: any) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-muted-foreground">Principal Amount</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Amount</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-primary">{investment ? formatCurrency(Number(investment.principal_amount)) : "Loading..."}</p>
+            <p className="text-2xl font-bold text-primary">{investment ? formatCurrency(Number(investment.amount)) : "Loading..."}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-muted-foreground">Effective ROI</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">ROI Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{investment ? investment.effective_roi_rate + "%/month" : "Loading..."}</p>
-            {investment && investment.bonus_rate > 0 && (
-              <p className="text-xs text-green-600">+{investment.bonus_rate}% bonus</p>
-            )}
+            <p className="text-2xl font-bold">{investment ? investment.roi_percentage + "%" : "Loading..."}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-muted-foreground">Total Earned</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600">{investment ? formatCurrency(Number(investment.total_earned || 0)) : "Loading..."}</p>
+            <Badge className="capitalize">{investment ? investment.status : "Loading..."}</Badge>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-muted-foreground">Lock Period</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Lock Type</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge variant="outline">{investment ? getLockTypeLabel(investment.lock_period_years) : "Loading..."}</Badge>
+            <Badge variant="outline">{investment ? getLockTypeLabel(investment.roi_percentage) : "Loading..."}</Badge>
           </CardContent>
         </Card>
       </div>
@@ -463,20 +456,18 @@ function InvestmentDetailsContent({ params, router }: any) {
               <p className="text-lg font-semibold">{investment ? new Date(investment.start_date).toLocaleDateString() : "Loading..."}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Unlock Date</p>
-              <p className="text-lg font-semibold">
-                {investment ? new Date(investment.unlock_date).toLocaleDateString() : "Loading..."}
-              </p>
-            </div>
-            <div>
               <p className="text-sm text-muted-foreground mb-1">Maturity Date</p>
-              <p className="text-lg font-semibold">{investment ? new Date(investment.maturity_date).toLocaleDateString() : "Loading..."}</p>
+              <p className="text-lg font-semibold">
+                {investment ? new Date(investment.maturity_date).toLocaleDateString() : "Loading..."}
+              </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Last Earning Date</p>
-              <p className="text-lg font-semibold">
-                {investment ? (investment.last_earning_date ? new Date(investment.last_earning_date).toLocaleDateString() : "Not yet") : "Loading..."}
-              </p>
+              <p className="text-sm text-muted-foreground mb-1">Created</p>
+              <p className="text-lg font-semibold">{investment ? new Date(investment.created_at).toLocaleDateString() : "Loading..."}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Auto Reinvest</p>
+              <p className="text-lg font-semibold">{investment ? (investment.auto_reinvest ? "Yes" : "No") : "Loading..."}</p>
             </div>
           </div>
         </CardContent>
@@ -489,12 +480,12 @@ function InvestmentDetailsContent({ params, router }: any) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <span className="text-foreground">Status</span>
+            <span className="text-foreground">Investment Status</span>
             <Badge className="capitalize">{investment ? investment.status : "Loading..."}</Badge>
           </div>
-          {investment && new Date(investment.unlock_date) > new Date() && (
-            <div className="mt-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-blue-800 dark:text-blue-200">
-              Earnings will start on {new Date(investment.unlock_date).toLocaleDateString()}
+          {investment && investment.status === "active" && (
+            <div className="mt-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4 text-sm text-green-800 dark:text-green-200">
+              Your investment is active and earning returns until {new Date(investment.maturity_date).toLocaleDateString()}
             </div>
           )}
         </CardContent>
