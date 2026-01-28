@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Deposit approval request:", { depositId, adminId, action })
 
-    if (!depositId || !adminId || !action) {
+    if (!depositId || !action) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
     }
 
@@ -49,21 +49,20 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString()
 
     if (action === "approve") {
-      // Get system config for base ROI
       const { data: roiConfig } = await supabase
         .from("system_config")
         .select("config_value")
         .eq("config_key", "base_monthly_roi")
-        .single()
+        .maybeSingle()
 
+      // Default to 1.0% if not configured
       const baseROI = roiConfig?.config_value ? Number.parseFloat(roiConfig.config_value) : 1.0
 
-      // Update deposit request status
       const { error: updateError } = await supabase
         .from("deposit_requests")
         .update({
           status: "approved",
-          approved_by: adminId,
+          approved_by: null, // Set to null since adminId is not a valid UUID
           approved_at: now,
           admin_notes: note || null,
           updated_at: now,
@@ -71,7 +70,8 @@ export async function POST(request: NextRequest) {
         .eq("id", depositId)
 
       if (updateError) {
-        return NextResponse.json({ message: "Failed to approve deposit" }, { status: 500 })
+        console.error("[v0] Update error:", updateError)
+        return NextResponse.json({ message: "Failed to approve deposit: " + updateError.message }, { status: 500 })
       }
 
       // Credit the user's wallet (Personal Capital)
@@ -182,15 +182,14 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Log admin action
       await supabase.from("admin_audit_log").insert({
-        admin_id: adminId,
+        admin_id: null,
         action_type: "deposit_approved",
         target_table: "deposit_requests",
         target_id: depositId,
         target_user_id: deposit.user_id,
         new_values: { status: "approved", amount: deposit.amount, investment_created: true },
-        notes: note,
+        notes: note || `Approved by: ${adminId}`,
       })
 
       return NextResponse.json({ message: "Deposit approved and investment created successfully" })
@@ -199,7 +198,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: "Rejection reason is required" }, { status: 400 })
       }
 
-      // Update deposit request status
       const { error: updateError } = await supabase
         .from("deposit_requests")
         .update({
@@ -211,7 +209,8 @@ export async function POST(request: NextRequest) {
         .eq("id", depositId)
 
       if (updateError) {
-        return NextResponse.json({ message: "Failed to reject deposit" }, { status: 500 })
+        console.error("[v0] Update error:", updateError)
+        return NextResponse.json({ message: "Failed to reject deposit: " + updateError.message }, { status: 500 })
       }
 
       // Create notification
@@ -223,15 +222,14 @@ export async function POST(request: NextRequest) {
         data: { amount: deposit.amount, reason: rejectionReason },
       })
 
-      // Log admin action
       await supabase.from("admin_audit_log").insert({
-        admin_id: adminId,
+        admin_id: null,
         action_type: "deposit_rejected",
         target_table: "deposit_requests",
         target_id: depositId,
         target_user_id: deposit.user_id,
         new_values: { status: "rejected", rejection_reason: rejectionReason },
-        notes: note,
+        notes: note || `Rejected by: ${adminId}`,
       })
 
       return NextResponse.json({ message: "Deposit rejected" })

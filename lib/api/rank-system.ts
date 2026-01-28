@@ -4,15 +4,15 @@ export interface Rank {
   id: string
   rank_name: string
   rank_order: number
-  min_pc: number
-  min_nc: number
+  min_personal_capital: number
+  min_network_capital: number
   pc_roi_percentage: number
   nc_commission_percentage: number
-  gnc_commission_percentage: number
-  vnc_commission_percentage: number
-  min_guaranteed_percentage: number
-  welcome_bonus_multiplier: number
-  special_perks: any
+  gnc_commission_percentage?: number
+  vnc_commission_percentage?: number
+  min_guaranteed_commission?: number
+  welcome_bonus_percentage?: number
+  special_perks?: any
 }
 
 export interface NetworkStats {
@@ -41,13 +41,17 @@ export async function getUserRank(userId: string): Promise<Rank | null> {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("rank_id")
+    .select("current_rank")
     .eq("id", userId)
     .single()
 
-  if (profileError || !profile?.rank_id) return null
+  if (profileError || !profile?.current_rank) return null
 
-  const { data: rank, error: rankError } = await supabase.from("ranks").select("*").eq("id", profile.rank_id).single()
+  const { data: rank, error: rankError } = await supabase
+    .from("ranks")
+    .select("*")
+    .eq("rank_name", profile.current_rank)
+    .single()
 
   if (rankError) throw rankError
   return rank
@@ -59,7 +63,7 @@ export async function getNetworkStats(userId: string): Promise<NetworkStats> {
   // Get PC, NC, and current rank
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("personal_capital, network_capital, current_rank, rank_id")
+    .select("personal_capital, network_capital, current_rank")
     .eq("id", userId)
     .single()
 
@@ -69,9 +73,9 @@ export async function getNetworkStats(userId: string): Promise<NetworkStats> {
   const { data: genealogy, error: genError } = await supabase
     .from("network_genealogy")
     .select("generation, user_id")
-    .eq("root_id", userId)
+    .eq("upline_id", userId)
 
-  if (genError) throw genError
+  if (genError) console.error("[v0] Network genealogy error:", genError)
 
   // Count members by generation
   const generations: { [key: number]: number } = {}
@@ -95,15 +99,17 @@ export async function getNetworkStats(userId: string): Promise<NetworkStats> {
   let nextRank: string | null = null
   let progressToNextRank = 100
 
-  if (ranks && profile?.rank_id) {
-    const currentRankIndex = ranks.findIndex((r) => r.id === profile.rank_id)
+  if (ranks && profile?.current_rank) {
+    const currentRankIndex = ranks.findIndex((r) => r.rank_name === profile.current_rank)
     if (currentRankIndex !== -1 && currentRankIndex < ranks.length - 1) {
       const nextRankData = ranks[currentRankIndex + 1]
       nextRank = nextRankData.rank_name
 
       // Calculate progress (based on PC or NC, whichever is closer)
-      const pcProgress = (profile.personal_capital / nextRankData.min_pc) * 100
-      const ncProgress = nextRankData.min_nc ? (profile.network_capital / nextRankData.min_nc) * 100 : 0
+      const pcProgress = (profile.personal_capital / nextRankData.min_personal_capital) * 100
+      const ncProgress = nextRankData.min_network_capital
+        ? (profile.network_capital / nextRankData.min_network_capital) * 100
+        : 0
       progressToNextRank = Math.max(pcProgress, ncProgress)
     }
   }
@@ -128,7 +134,7 @@ export async function getRankHistory(userId: string) {
     .from("rank_history")
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+    .order("changed_at", { ascending: false })
 
   if (error) throw error
   return data || []
