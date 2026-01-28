@@ -1,39 +1,97 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard/layout"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
+import { createClient } from "@/lib/supabase/client"
 import { useUserProfile } from "@/hooks/use-user-profile"
-import { usePortfolios } from "@/hooks/use-portfolios"
-import { useWallet } from "@/hooks/use-wallet"
-import { createInvestment } from "@/lib/api/investments"
-import { updateWalletBalance } from "@/lib/api/wallet"
+import { Loader2 } from "lucide-react"
 
 export default function NewInvestmentPage() {
   const router = useRouter()
-  const { profile } = useUserProfile()
-  const { portfolios, loading: portfoliosLoading } = usePortfolios()
-  const { wallet, loading: walletLoading } = useWallet()
-  const [loading, setLoading] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const { profile } = useUserProfile(userId)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [walletBalance, setWalletBalance] = useState(0)
   const [formData, setFormData] = useState({
-    portfolio_id: "",
     amount: "",
-    start_date: new Date().toISOString().split("T")[0],
+    lock_type: "none" as "none" | "1_year" | "10_year",
+    portfolio_id: "",
+    start_date: "",
     auto_reinvest: false,
   })
 
+  const [portfoliosLoading, setPortfoliosLoading] = useState(true)
+  const [walletLoading, setWalletLoading] = useState(true)
+  const [portfolios, setPortfolios] = useState([])
+  const [wallet, setWallet] = useState(null)
+
+  // Get authenticated user ID first
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) {
+          router.push("/auth/login")
+          return
+        }
+
+        setUserId(user.id)
+
+        // Get wallet balance
+        const { data: walletData, error: walletError } = await supabase
+          .from("wallets")
+          .select("balance")
+          .eq("user_id", user.id)
+          .single()
+
+        if (walletError) {
+          console.error("[v0] Wallet fetch error:", walletError)
+          return
+        }
+
+        setWallet(walletData)
+        setWalletBalance(walletData.balance || 0)
+        setWalletLoading(false)
+
+        // Get portfolios
+        const { data: portfoliosData, error: portfoliosError } = await supabase
+          .from("portfolios")
+          .select("*")
+          .eq("user_id", user.id)
+
+        if (portfoliosError) {
+          console.error("[v0] Portfolios fetch error:", portfoliosError)
+          return
+        }
+
+        setPortfolios(portfoliosData)
+        setPortfoliosLoading(false)
+      } catch (err) {
+        console.error("[v0] New investment auth error:", err)
+        router.push("/auth/login")
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
   const handleChange = (e: any) => {
-    const { name, value, checked, type } = e.target
+    const { name, value, type, checked } = e.target
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -41,12 +99,17 @@ export default function NewInvestmentPage() {
   }
 
   const validateInvestment = () => {
-    if (!formData.amount || !formData.portfolio_id) {
-      setError("Please fill in all required fields")
+    if (!formData.amount) {
+      setError("Please enter an investment amount")
       return false
     }
 
     const amount = Number.parseFloat(formData.amount)
+
+    if (isNaN(amount) || amount <= 0) {
+      setError("Please enter a valid amount")
+      return false
+    }
 
     const MIN_INVESTMENT = 1000
     const MAX_INVESTMENT = 50000000
@@ -61,8 +124,18 @@ export default function NewInvestmentPage() {
       return false
     }
 
-    if (amount > (wallet?.balance || 0)) {
-      setError(`Insufficient wallet balance. Available: ₦${(wallet?.balance || 0).toLocaleString()}`)
+    if (amount > walletBalance) {
+      setError(`Insufficient wallet balance. Available: ₦${walletBalance.toLocaleString()}`)
+      return false
+    }
+
+    if (!formData.portfolio_id) {
+      setError("Please select a portfolio")
+      return false
+    }
+
+    if (!formData.start_date) {
+      setError("Please select a start date")
       return false
     }
 
@@ -78,44 +151,72 @@ export default function NewInvestmentPage() {
       return
     }
 
-    setLoading(true)
+    if (!userId) {
+      setError("User not authenticated")
+      return
+    }
+
+    setSubmitting(true)
 
     try {
       const amount = Number.parseFloat(formData.amount)
-      const startDate = new Date(formData.start_date)
-      const maturityDate = new Date(startDate)
-      maturityDate.setFullYear(maturityDate.getFullYear() + 1)
+      const supabase = createClient()
 
-      await createInvestment({
-        portfolio_id: formData.portfolio_id,
-        amount,
-        start_date: formData.start_date,
-        maturity_date: maturityDate.toISOString().split("T")[0],
-        roi_percentage: 100,
-        auto_reinvest: formData.auto_reinvest,
-      })
+      console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type, "portfolio_id:", formData.portfolio_id)
 
-      if (wallet) {
-        await updateWalletBalance(wallet.id, wallet.balance - amount)
+      // Create investment directly
+      const { data: investment, error: investmentError } = await supabase
+        .from("investments")
+        .insert({
+          user_id: userId,
+          portfolio_id: formData.portfolio_id,
+          principal: amount,
+          lock_type: formData.lock_type,
+          base_roi: 1.0, // Default base ROI
+          effective_roi: formData.lock_type === "1_year" ? 6.0 : formData.lock_type === "10_year" ? 11.0 : 1.0,
+          lcr_bonus: formData.lock_type === "1_year" ? 5.0 : formData.lock_type === "10_year" ? 10.0 : 0,
+          status: "pending",
+          total_returns: 0,
+          approved_at: null,
+          returns_start_at: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          next_return_date: null,
+          last_return_date: null,
+          start_date: formData.start_date,
+          auto_reinvest: formData.auto_reinvest,
+        })
+        .select()
+
+      if (investmentError) {
+        console.error("[v0] Investment creation error:", investmentError)
+        throw investmentError
       }
 
-      setSuccess("Investment created successfully!")
+      console.log("[v0] Investment created:", investment)
 
+      // Deduct amount from wallet
+      const newBalance = (wallet?.balance || 0) - amount
+      await supabase.from("wallets").update({ balance: newBalance }).eq("user_id", userId)
+
+      setSuccess("Investment created successfully! Your investment is pending admin approval.")
+      setFormData({ amount: "", lock_type: "none", portfolio_id: "", start_date: "", auto_reinvest: false })
+
+      // Redirect after 2 seconds
       setTimeout(() => {
         router.push("/dashboard/investments")
-      }, 1500)
+      }, 2000)
     } catch (err) {
+      console.error("[v0] Error creating investment:", err)
       setError(err instanceof Error ? err.message : "Failed to create investment")
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
-  if (portfoliosLoading || walletLoading) {
+  if (loading || portfoliosLoading || walletLoading) {
     return (
       <DashboardLayout profile={profile}>
-        <div className="flex items-center justify-center h-64">
-          <Spinner className="w-8 h-8" />
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       </DashboardLayout>
     )
@@ -123,36 +224,45 @@ export default function NewInvestmentPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="max-w-2xl">
-        <div className="mb-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div>
           <h1 className="text-3xl font-bold text-foreground">Create Investment</h1>
-          <p className="text-muted-foreground">Start a new investment plan with guaranteed 100% returns</p>
+          <p className="text-muted-foreground">Start your investment journey with a new portfolio</p>
         </div>
 
         <Card>
-          <CardContent className="pt-6">
+          <CardHeader>
+            <CardTitle>Investment Details</CardTitle>
+          </CardHeader>
+          <CardContent>
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert className="mb-6 bg-red-50 text-red-800 border-red-200">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
             {success && (
-              <Alert className="mb-4 border-green-200 bg-green-50">
-                <AlertDescription className="text-green-800">{success}</AlertDescription>
+              <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  <span className="font-semibold">Available Balance:</span> ₦{walletBalance.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="portfolio_id">Select Portfolio</Label>
                 <select
                   id="portfolio_id"
                   name="portfolio_id"
                   value={formData.portfolio_id}
                   onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                  disabled={submitting}
+                  className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground"
                 >
                   <option value="">Choose a portfolio...</option>
                   {portfolios.map((p: any) => (
@@ -163,25 +273,45 @@ export default function NewInvestmentPage() {
                 </select>
               </div>
 
-              <div>
-                <Label htmlFor="amount">Investment Amount (₦)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Investment Amount *</Label>
                 <Input
                   id="amount"
                   name="amount"
                   type="number"
-                  placeholder="50000"
+                  placeholder="Enter amount (minimum: ₦1,000)"
                   value={formData.amount}
                   onChange={handleChange}
                   min="1000"
                   step="1000"
-                  required
+                  disabled={submitting}
+                  className="text-lg"
                 />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Minimum: ₦1,000 | Maximum: ₦50,000,000 | Available: ₦{(wallet?.balance || 0).toLocaleString()}
+                <p className="text-xs text-muted-foreground">
+                  Min: ₦1,000 | Max: ₦50,000,000
                 </p>
               </div>
 
-              <div>
+              <div className="space-y-2">
+                <Label htmlFor="lock_type">Lock Type</Label>
+                <select
+                  id="lock_type"
+                  name="lock_type"
+                  value={formData.lock_type}
+                  onChange={handleChange}
+                  disabled={submitting}
+                  className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground"
+                >
+                  <option value="none">No Lock (1.0% ROI/month)</option>
+                  <option value="1_year">1 Year Lock (6.0% ROI/month + 5% LCR bonus)</option>
+                  <option value="10_year">10 Year Lock (11.0% ROI/month + 10% LCR bonus)</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Longer lock periods provide higher returns through LCR bonuses
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="start_date">Start Date</Label>
                 <Input
                   id="start_date"
@@ -189,14 +319,15 @@ export default function NewInvestmentPage() {
                   type="date"
                   value={formData.start_date}
                   onChange={handleChange}
-                  required
+                  disabled={submitting}
+                  className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground"
                 />
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Returns:</strong> Your investment will mature in 1 year with 100% ROI. You'll earn{" "}
-                  <strong>₦{formData.amount ? Number.parseFloat(formData.amount).toLocaleString() : "0"}</strong> in
+                  <span className="font-semibold">Returns:</span> Your investment will mature in 1 year with 100% ROI. You'll earn{" "}
+                  <span className="font-semibold">₦{formData.amount ? Number.parseFloat(formData.amount).toLocaleString() : "0"}</span> in
                   returns.
                 </p>
               </div>
@@ -207,23 +338,33 @@ export default function NewInvestmentPage() {
                   name="auto_reinvest"
                   checked={formData.auto_reinvest}
                   onChange={handleChange}
+                  disabled={submitting}
                   className="w-4 h-4"
                 />
                 <span className="text-foreground">Auto-reinvest returns when investment matures</span>
               </label>
 
               <div className="flex gap-4">
-                <Button type="submit" disabled={loading} className="flex-1 bg-primary hover:bg-primary/90">
-                  {loading ? (
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 bg-primary hover:bg-primary/90"
+                >
+                  {submitting ? (
                     <>
                       <Spinner className="mr-2 h-4 w-4" />
-                      Creating...
+                      Creating Investment...
                     </>
                   ) : (
                     "Create Investment"
                   )}
                 </Button>
-                <Button variant="outline" onClick={() => router.back()} className="flex-1 bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  disabled={submitting}
+                >
                   Cancel
                 </Button>
               </div>
