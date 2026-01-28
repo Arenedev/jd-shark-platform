@@ -58,7 +58,7 @@ export async function requestLoanAction(
     const { data: loan, error: loanError } = await supabase
       .from("organization_loans")
       .insert({
-        user_id: userId,
+        organization_id: userId,
         principal_amount: amount,
         monthly_interest_rate: 0.5,
         total_due: totalDue,
