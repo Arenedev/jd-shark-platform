@@ -2,20 +2,15 @@
 
 import { createClient } from "@/lib/supabase/server"
 
-export async function requestLoanAction(amount: number) {
+export async function requestLoanAction(amount: number, userId: string) {
   try {
     const supabase = await createClient()
 
-    // Get the authenticated user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    console.log("[v0] Server action received - userId:", userId, "amount:", amount)
 
-    if (!user) {
-      throw new Error("Unauthorized - please log in")
+    if (!userId) {
+      throw new Error("User ID is required")
     }
-
-    console.log("[v0] Processing loan request for user:", user.id)
 
     if (!amount || amount <= 0) {
       throw new Error("Invalid loan amount")
@@ -25,13 +20,15 @@ export async function requestLoanAction(amount: number) {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("base_structure, personal_capital, full_name, email")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single()
 
     if (profileError || !profile) {
       console.error("[v0] Profile fetch error:", profileError?.message)
       throw new Error("User profile not found")
     }
+
+    console.log("[v0] User profile found:", profile.base_structure)
 
     if (profile.base_structure !== "organization") {
       throw new Error("Only Organizations are eligible for loans")
@@ -54,13 +51,13 @@ export async function requestLoanAction(amount: number) {
     const months = 12
     const totalDue = amount * (1 + monthlyRate * months)
 
-    console.log("[v0] Creating loan:", { userId: user.id, amount, totalDue })
+    console.log("[v0] Creating loan:", { userId, amount, totalDue })
 
     // Create loan request
     const { data: loan, error: loanError } = await supabase
       .from("organization_loans")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         principal_amount: amount,
         monthly_interest_rate: 0.5,
         total_due: totalDue,

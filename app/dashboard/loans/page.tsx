@@ -62,8 +62,17 @@ export default function LoansPage() {
     setSuccess("")
 
     try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        throw new Error("Please log in to request a loan")
+      }
+
       const loanAmount = Number.parseFloat(amount)
-      const result = await requestLoanAction(loanAmount)
+      const result = await requestLoanAction(loanAmount, user.id)
 
       setSuccess("Loan request submitted successfully!")
       setAmount("")
