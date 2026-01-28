@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    // DO NOT await createClient() - this is critical for auth context to work
-    const supabase = createClient()
+    // createClient() is async and MUST be awaited to get the Supabase client
+    const supabase = await createClient()
 
     // Use getUser() to get the authenticated user
     const {
