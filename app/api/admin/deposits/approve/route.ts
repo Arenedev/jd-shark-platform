@@ -80,26 +80,45 @@ export async function POST(request: NextRequest) {
         p_amount: deposit.amount,
       })
 
-      // Fallback if RPC doesn't exist
+      // Fallback if RPC doesn't exist - do manual update
       if (walletError) {
-        await supabase
+        console.log("[v0] RPC failed, using fallback wallet update:", walletError)
+        
+        // Get current wallet balance
+        const { data: wallet } = await supabase
           .from("wallets")
-          .update({
-            balance: supabase.sql`balance + ${deposit.amount}`,
-            total_funded: supabase.sql`total_funded + ${deposit.amount}`,
-            updated_at: now,
-          })
+          .select("balance, total_funded")
           .eq("id", deposit.wallet_id)
+          .single()
+
+        if (wallet) {
+          await supabase
+            .from("wallets")
+            .update({
+              balance: (wallet.balance || 0) + deposit.amount,
+              total_funded: (wallet.total_funded || 0) + deposit.amount,
+              updated_at: now,
+            })
+            .eq("id", deposit.wallet_id)
+        }
       }
 
       // Update user's personal capital
-      await supabase
+      const { data: profile } = await supabase
         .from("profiles")
-        .update({
-          personal_capital: supabase.sql`COALESCE(personal_capital, 0) + ${deposit.amount}`,
-          updated_at: now,
-        })
+        .select("personal_capital")
         .eq("id", deposit.user_id)
+        .single()
+
+      if (profile) {
+        await supabase
+          .from("profiles")
+          .update({
+            personal_capital: (profile.personal_capital || 0) + deposit.amount,
+            updated_at: now,
+          })
+          .eq("id", deposit.user_id)
+      }
 
       // Calculate returns start date (4 months after approval)
       const approvedDate = new Date(now)
