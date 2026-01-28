@@ -1,44 +1,78 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard/layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { getUserInvestments, type Investment } from "@/lib/api/investments-phase1"
 import { Loader2 } from "lucide-react"
 
 export default function InvestmentsPage() {
-  const { profile, loading: profileLoading } = useUserProfile()
+  const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
+  const { profile, loading: profileLoading } = useUserProfile(userId)
   const [investments, setInvestments] = useState<Investment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Get authenticated user ID first
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) {
+          console.log("[v0] Investments page: No user, redirecting to login")
+          router.push("/auth/login")
+          return
+        }
+
+        console.log("[v0] Investments page: User authenticated:", user.id)
+        setUserId(user.id)
+      } catch (err) {
+        console.error("[v0] Investments page: Auth check error:", err)
+        router.push("/auth/login")
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
+  // Load investments when userId is available
   useEffect(() => {
     async function loadInvestments() {
-      if (!profile?.id) return
+      if (!userId) {
+        console.log("[v0] Investments page: No userId yet, skipping load")
+        return
+      }
 
       try {
-        console.log("[v0] Loading investments for user:", profile.id)
-        const data = await getUserInvestments(profile.id)
-        console.log("[v0] Investments loaded:", data.length)
+        console.log("[v0] Investments page: Loading investments for user:", userId)
+        const data = await getUserInvestments(userId)
+        console.log("[v0] Investments page: Investments loaded:", data.length)
         setInvestments(data)
+        setLoading(false)
       } catch (err) {
-        console.error("[v0] Error loading investments:", err)
+        console.error("[v0] Investments page: Error loading investments:", err)
         setError("Failed to load investments")
-      } finally {
         setLoading(false)
       }
     }
 
-    if (profile?.id) {
+    if (userId) {
       loadInvestments()
     }
-  }, [profile?.id])
+  }, [userId])
 
-  if (profileLoading || loading) {
+  if (loading) {
     return (
       <DashboardLayout profile={profile}>
         <div className="min-h-screen flex items-center justify-center">
