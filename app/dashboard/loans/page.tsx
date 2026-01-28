@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatCurrency } from "@/lib/utils"
 import { checkLoanEligibility, getUserLoans, type OrganizationLoan } from "@/lib/api/special-features"
+import { requestLoanAction } from "@/lib/actions/loans"
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<OrganizationLoan[]>([])
@@ -61,24 +62,14 @@ export default function LoansPage() {
     setSuccess("")
 
     try {
-      const response = await fetch("/api/loans/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ amount: Number.parseFloat(amount) }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to request loan")
-      }
+      const loanAmount = Number.parseFloat(amount)
+      const result = await requestLoanAction(loanAmount)
 
       setSuccess("Loan request submitted successfully!")
       setAmount("")
       await loadData()
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || "Failed to request loan")
     } finally {
       setRequesting(false)
     }
