@@ -50,6 +50,10 @@ export default function AdminLoansPage() {
       return
     }
     fetchData()
+    
+    // Set up auto-refresh every 30 seconds
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   async function fetchData() {
@@ -207,7 +211,7 @@ export default function AdminLoansPage() {
                       <p className="text-sm text-muted-foreground">Total Due (with interest)</p>
                       <p className="text-lg font-semibold">{formatCurrency(loan.total_due)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {loan.monthly_interest_rate}% monthly
+                        {loan.interest_rate}% monthly
                       </p>
                     </div>
 

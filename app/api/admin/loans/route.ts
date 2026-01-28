@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    // Add await here - createClient() is async!
+    const supabase = await createClient()
 
     // Verify admin session
     const {
@@ -33,12 +34,13 @@ export async function GET(request: NextRequest) {
         id,
         user_id,
         principal_amount,
-        monthly_interest_rate,
+        interest_rate,
+        monthly_interest,
         total_due,
-        amount_paid,
+        repaid_amount,
         status,
         approved_at,
-        due_date,
+        maturity_date,
         created_at,
         profiles:user_id (
           id,
@@ -56,9 +58,10 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
+    console.log("[v0] Fetched loans:", loans?.length || 0)
     return NextResponse.json({ loans: loans || [] })
   } catch (error: any) {
-    console.error("[v0] Admin loans API error:", error)
+    console.error("[v0] Admin loans API error:", error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
