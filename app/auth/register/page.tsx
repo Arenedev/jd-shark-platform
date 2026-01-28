@@ -142,6 +142,12 @@ function RegisterForm() {
     setError(null)
     setSuccess(false)
 
+    // Check if email already exists
+    if (emailError) {
+      setError(emailError)
+      return
+    }
+
     if (formData.password !== formData.passwordConfirm) {
       setError("Passwords do not match")
       return
@@ -191,11 +197,13 @@ function RegisterForm() {
           })
 
           if (!createUserResponse.ok) {
-            const error = await createUserResponse.json()
-            console.error("[v0] Profile creation warning:", error)
+            const errorData = await createUserResponse.json()
+            console.error("[v0] Profile creation error:", errorData)
+            throw new Error(errorData.message || "Failed to create user profile")
           }
         } catch (err) {
           console.error("[v0] Profile creation fetch error:", err)
+          throw err
         }
       }
 
