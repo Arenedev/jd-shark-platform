@@ -108,7 +108,7 @@ export default function WalletFundingPage() {
     setLoading(true)
 
     try {
-      // Upload file to Vercel Blob
+      // Upload file to Supabase Storage
       const formData = new FormData()
       formData.append("file", paymentProofFile)
 
