@@ -1,0 +1,86 @@
+"use server"
+
+import { createServiceRoleClient } from "@/lib/supabase/server"
+
+export async function requestLoanAction(
+  amount: number,
+  userId: string,
+  profile: {
+    base_structure: string
+    personal_capital: number
+    full_name?: string
+    email?: string
+  },
+) {
+  try {
+    // Use service role client to bypass RLS for inserting loan records
+    const supabase = createServiceRoleClient()
+
+    console.log("[v0] Server action received - userId:", userId, "amount:", amount)
+
+    if (!userId) {
+      throw new Error("User ID is required")
+    }
+
+    if (!amount || amount <= 0) {
+      throw new Error("Invalid loan amount")
+    }
+
+    if (!profile) {
+      throw new Error("User profile is required")
+    }
+
+    console.log("[v0] User profile received:", profile.base_structure)
+
+    if (profile.base_structure !== "organization") {
+      throw new Error("Only Organizations are eligible for loans")
+    }
+
+    const portfolio_value = profile.personal_capital || 0
+    const max_loan_amount = portfolio_value * 0.8
+    const min_loan_amount = portfolio_value * 0.5
+
+    if (amount > max_loan_amount) {
+      throw new Error(`Maximum loan amount is ₦${Math.floor(max_loan_amount).toLocaleString()}`)
+    }
+
+    if (amount < min_loan_amount) {
+      throw new Error(`Minimum loan amount is ₦${Math.floor(min_loan_amount).toLocaleString()} (50% of portfolio)`)
+    }
+
+    // Calculate total due with 0.5% monthly interest for 12 months
+    const monthlyRate = 0.005
+    const months = 12
+    const totalDue = amount * (1 + monthlyRate * months)
+
+    console.log("[v0] Creating loan:", { userId, amount, totalDue })
+
+    // Create loan request using service role client
+    const monthlyInterest = amount * 0.005 // 0.5% monthly
+    const { data: loan, error: loanError } = await supabase
+      .from("organization_loans")
+      .insert({
+        user_id: userId,
+        principal_amount: amount,
+        interest_rate: 0.5,
+        monthly_interest: monthlyInterest,
+        total_due: totalDue,
+        status: "pending",
+        maturity_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .select()
+      .single()
+
+    if (loanError) {
+      console.error("[v0] Loan creation error:", loanError?.message)
+      throw new Error("Failed to create loan request")
+    }
+
+    console.log("[v0] Loan created successfully:", loan?.id)
+
+    return { success: true, loan }
+  } catch (error: any) {
+    console.error("[v0] Loan request error:", error?.message || error)
+    throw error
+  }
+}

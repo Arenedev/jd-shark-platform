@@ -179,6 +179,25 @@ function NewInvestmentContent({ searchParams, router }: any) {
         return
       }
 
+      // Get user's personal capital to determine interest rate
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("personal_capital")
+        .eq("id", userId)
+        .single()
+
+      if (profileError) {
+        console.error("[v0] Profile fetch error:", profileError)
+        throw profileError
+      }
+
+      // Calculate ROI based on personal capital
+      // 8% for balance ≤ 100M, 9% for balance > 100M
+      const personalCapital = profileData?.personal_capital || 0
+      const roiPercentage = personalCapital > 100000000 ? 9.0 : 8.0
+
+      console.log("[v0] User personal capital:", personalCapital, "ROI:", roiPercentage + "%")
+
       const today = new Date()
       // Use UTC date to avoid timezone issues
       const year = today.getUTCFullYear()
@@ -199,7 +218,7 @@ function NewInvestmentContent({ searchParams, router }: any) {
           amount: amount,
           start_date: startDate,
           maturity_date: maturityDateStr,
-          roi_percentage: 10.0,
+          roi_percentage: roiPercentage,
           status: "active",
           auto_reinvest: false,
         })

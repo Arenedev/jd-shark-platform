@@ -18,6 +18,7 @@ import {
   Wallet,
   Menu,
   X,
+  ReceiptText,
 } from "lucide-react"
 
 interface AdminLayoutProps {
@@ -43,6 +44,7 @@ export default function AdminLayout({ children, profile }: AdminLayoutProps) {
     { href: "/admin/deposits", label: "Deposits", icon: DollarSign },
     { href: "/admin/withdrawals", label: "Withdrawals", icon: Wallet },
     { href: "/admin/investments", label: "Investments", icon: TrendingUp },
+    { href: "/admin/loans", label: "Loan Approvals", icon: ReceiptText },
     { href: "/admin/reports", label: "Reports", icon: FileText },
     { href: "/admin/settings", label: "Settings", icon: Settings },
   ]

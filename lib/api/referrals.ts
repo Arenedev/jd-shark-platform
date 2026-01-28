@@ -119,6 +119,18 @@ export async function verifyReferralCode(code: string) {
 export async function createReferral(referrerId: string, referredId: string) {
   const supabase = createBrowserClient()
 
+  // Get referrer's account type
+  const { data: referrerProfile } = await supabase
+    .from("profiles")
+    .select("base_structure")
+    .eq("id", referrerId)
+    .single()
+
+  // Organization commission rate: 1% from referred organization's ROI
+  // Regular investor commission rate: 10% from deposit (default)
+  const isOrganizationReferrer = referrerProfile?.base_structure === "organization"
+  const commissionRate = isOrganizationReferrer ? 1 : 10
+
   const { data, error } = await supabase
     .from("referrals")
     .insert([
@@ -126,7 +138,7 @@ export async function createReferral(referrerId: string, referredId: string) {
         referrer_id: referrerId,
         referred_id: referredId,
         level: 1,
-        commission_rate: 10,
+        commission_rate: commissionRate,
       },
     ])
     .select()

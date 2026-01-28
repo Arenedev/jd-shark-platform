@@ -253,11 +253,20 @@ CREATE TABLE IF NOT EXISTS public.welcome_bonuses (
 -- Incentives tracking (cars, vacations, etc)
 CREATE TABLE IF NOT EXISTS public.incentives (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  incentive_type TEXT NOT NULL,
-  incentive_description TEXT NOT NULL,
-  rank_name TEXT NOT NULL,
-  awarded_at TIMESTAMPTZ DEFAULT NOW()
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  rank_id UUID REFERENCES public.ranks(id),
+  incentive_type TEXT NOT NULL CHECK (incentive_type IN (
+    'car', 'vacation', 'leadership_title', 'special_recognition', 
+    'lcr_bonus', 'organization_referral', 'other'
+  )),
+  title TEXT NOT NULL,
+  description TEXT,
+  value_amount DECIMAL(18, 2),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'awarded', 'claimed', 'expired')),
+  awarded_at TIMESTAMP WITH TIME ZONE,
+  claimed_at TIMESTAMP WITH TIME ZONE,
+  metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- RLS Policies for new tables

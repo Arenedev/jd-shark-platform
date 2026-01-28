@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatCurrency } from "@/lib/utils"
 import { checkLoanEligibility, getUserLoans, type OrganizationLoan } from "@/lib/api/special-features"
+import { requestLoanAction } from "@/lib/actions/loans"
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<OrganizationLoan[]>([])
@@ -25,18 +26,30 @@ export default function LoansPage() {
 
   async function loadData() {
     try {
+      setLoading(true)
       const supabase = createClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (!user) return
+      if (!user) {
+        console.log("[v0] No user found")
+        return
+      }
 
-      const [eligibilityData, loansData] = await Promise.all([checkLoanEligibility(user.id), getUserLoans(user.id)])
-
+      console.log("[v0] Loading loan data for user:", user.id)
+      
+      const eligibilityData = await checkLoanEligibility(user.id)
+      console.log("[v0] Eligibility data received in component:", eligibilityData)
+      
       setEligibility(eligibilityData)
+      
+      const loansData = await getUserLoans(user.id)
+      console.log("[v0] Loans data received:", loansData)
+      
       setLoans(loansData)
     } catch (err: any) {
+      console.error("[v0] Error loading data:", err)
       setError(err.message)
     } finally {
       setLoading(false)
@@ -49,23 +62,34 @@ export default function LoansPage() {
     setSuccess("")
 
     try {
-      const response = await fetch("/api/loans/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number.parseFloat(amount) }),
-      })
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to request loan")
+      if (!user) {
+        throw new Error("Please log in to request a loan")
       }
+
+      // Get the profile data on the client side where RLS allows it
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("base_structure, personal_capital, full_name, email")
+        .eq("id", user.id)
+        .single()
+
+      if (profileError || !profile) {
+        throw new Error("User profile not found")
+      }
+
+      const loanAmount = Number.parseFloat(amount)
+      const result = await requestLoanAction(loanAmount, user.id, profile)
 
       setSuccess("Loan request submitted successfully!")
       setAmount("")
       await loadData()
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || "Failed to request loan")
     } finally {
       setRequesting(false)
     }
@@ -75,7 +99,10 @@ export default function LoansPage() {
     return <div className="p-6">Loading...</div>
   }
 
+  console.log("[v0] Loans page rendering with eligibility:", eligibility)
+
   if (!eligibility?.eligible) {
+    console.log("[v0] User not eligible for loans. eligibility object:", eligibility)
     return (
       <div className="p-6 space-y-4">
         <h1 className="text-3xl font-bold">Organization Loans</h1>
@@ -116,6 +143,10 @@ export default function LoansPage() {
               <p className="text-2xl font-bold">{formatCurrency(eligibility.investment_portfolio_value)}</p>
             </div>
             <div>
+              <p className="text-sm text-muted-foreground">Minimum Loan Amount (50%)</p>
+              <p className="text-2xl font-bold text-accent">{formatCurrency(eligibility.max_loan_amount * 0.625)}</p>
+            </div>
+            <div>
               <p className="text-sm text-muted-foreground">Maximum Loan Amount (80%)</p>
               <p className="text-2xl font-bold text-primary">{formatCurrency(eligibility.max_loan_amount)}</p>
             </div>
@@ -137,12 +168,15 @@ export default function LoansPage() {
               <Input
                 id="amount"
                 type="number"
-                placeholder="Enter amount"
+                placeholder="Enter amount between 50-80% of portfolio"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                min={eligibility.max_loan_amount * 0.625}
                 max={eligibility.max_loan_amount}
               />
-              <p className="text-xs text-muted-foreground">Maximum: {formatCurrency(eligibility.max_loan_amount)}</p>
+              <p className="text-xs text-muted-foreground">
+                Range: {formatCurrency(eligibility.max_loan_amount * 0.625)} - {formatCurrency(eligibility.max_loan_amount)}
+              </p>
             </div>
 
             <Button onClick={handleRequestLoan} disabled={!amount || requesting} className="w-full">
