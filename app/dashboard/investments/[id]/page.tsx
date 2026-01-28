@@ -167,57 +167,20 @@ function NewInvestmentContent({ searchParams, router }: any) {
 
       console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type)
 
-      // First, get user's wallet
-      const { data: wallet, error: walletError } = await supabase
-        .from("wallets")
-        .select("id")
-        .eq("user_id", userId)
-        .single()
-
-      if (walletError || !wallet) {
-        console.error("[v0] Wallet error:", walletError)
-        throw new Error("Could not find wallet")
-      }
-
-      // Create a deposit request first (required for RLS policy)
-      const depositRef = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-      const { data: depositRequest, error: depositError } = await supabase
-        .from("deposit_requests")
-        .insert({
-          user_id: userId,
-          wallet_id: wallet.id,
-          amount,
-          payment_method: "internal_transfer",
-          status: "approved",
-          transaction_reference: depositRef,
-          approved_at: new Date().toISOString(),
-          approved_by: userId,
-        })
-        .select()
-        .single()
-
-      if (depositError || !depositRequest) {
-        console.error("[v0] Deposit request creation error:", depositError)
-        throw new Error("Could not create deposit request")
-      }
-
-      console.log("[v0] Deposit request created:", depositRequest.id)
-
-      // Now create investment linked to deposit request
+      // Create investment directly
       const { data: investment, error: investmentError } = await supabase
         .from("investments")
         .insert({
           user_id: userId,
-          deposit_request_id: depositRequest.id,
           principal: amount,
           lock_type: "1_year",
           base_roi: 10.0,
-          effective_roi: 15.0, // 10% base + 5% LCR bonus
+          effective_roi: 15.0,
           lcr_bonus: 5.0,
           status: "approved",
           total_returns: 0,
           approved_at: new Date().toISOString(),
-          returns_start_at: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          returns_start_at: new Date().toISOString(),
         })
         .select()
 
