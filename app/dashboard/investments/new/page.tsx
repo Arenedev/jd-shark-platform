@@ -169,7 +169,7 @@ function NewInvestmentContent() {
       const amount = Number.parseFloat(formData.amount)
       const supabase = createClient()
 
-      console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type, "portfolio_id:", formData.portfolio_id)
+      console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type)
 
       // Create investment directly
       const { data: investment, error: investmentError } = await supabase
@@ -178,35 +178,40 @@ function NewInvestmentContent() {
           user_id: userId,
           principal: amount,
           lock_type: formData.lock_type,
-          base_roi: 1.0, // Default base ROI
+          base_roi: 1.0,
           effective_roi: formData.lock_type === "1_year" ? 6.0 : formData.lock_type === "10_year" ? 11.0 : 1.0,
           lcr_bonus: formData.lock_type === "1_year" ? 5.0 : formData.lock_type === "10_year" ? 10.0 : 0,
           status: "pending",
           total_returns: 0,
-          approved_at: null,
           returns_start_at: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000).toISOString(),
-          next_return_date: null,
-          last_return_date: null,
         })
         .select()
+
+      console.log("[v0] Investment insert response - data:", investment, "error:", investmentError)
 
       if (investmentError) {
         console.error("[v0] Investment creation error:", investmentError)
         throw investmentError
       }
 
-      console.log("[v0] Investment created:", investment)
+      if (!investment || investment.length === 0) {
+        console.error("[v0] Investment creation returned no data")
+        throw new Error("Investment was not created. Please try again.")
+      }
+
+      const createdInvestment = investment[0]
+      console.log("[v0] Investment created successfully:", createdInvestment)
 
       // Deduct amount from wallet
-      if (investment && investment.length > 0) {
-        const { error: walletUpdateError } = await supabase
-          .from("wallets")
-          .update({ balance: walletBalance - amount })
-          .eq("user_id", userId)
+      const { error: walletUpdateError } = await supabase
+        .from("wallets")
+        .update({ balance: walletBalance - amount })
+        .eq("user_id", userId)
 
-        if (walletUpdateError) {
-          console.error("[v0] Wallet update error:", walletUpdateError)
-        }
+      if (walletUpdateError) {
+        console.error("[v0] Wallet update error:", walletUpdateError)
+      } else {
+        console.log("[v0] Wallet updated successfully")
       }
 
       setSuccess("Investment created successfully! Your investment is pending admin approval.")
