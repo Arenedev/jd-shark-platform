@@ -3,18 +3,19 @@ import { createBrowserClient } from "@/lib/supabase/client"
 export interface Investment {
   id: string
   user_id: string
-  deposit_request_id: string
-  principal: number
-  approved_at: string
-  returns_start_at: string
-  lock_type: "none" | "1_year" | "10_year"
-  base_roi: number
-  lcr_bonus: number
-  effective_roi: number
+  deposit_request_id: string | null
+  principal_amount: number
+  lock_period_years: number
+  bonus_rate: number
+  base_roi_rate: number
+  effective_roi_rate: number
+  start_date: string
+  unlock_date: string
+  maturity_date: string
   status: string
-  total_returns: number
-  last_return_date: string | null
-  next_return_date: string | null
+  auto_reinvest: boolean
+  total_earned: number
+  last_earning_date: string | null
   created_at: string
   updated_at: string
 }
@@ -52,7 +53,7 @@ export async function getUserInvestments(userId: string): Promise<Investment[]> 
   const supabase = createBrowserClient()
 
   const { data, error } = await supabase
-    .from("investments")
+    .from("lcr_investments")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
