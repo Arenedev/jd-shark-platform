@@ -108,8 +108,8 @@ export default function InvestmentsPage() {
   }
 
   const getLockTypeLabel = (roiPercentage: number) => {
-    if (roiPercentage === 15) {
-      return "1 Year Lock"
+    if (roiPercentage === 10) {
+      return "1 Year Lock (10% p.a)"
     }
     return "Standard"
   }
@@ -227,6 +227,9 @@ export default function InvestmentsPage() {
                 const portfolioInvestments = investments.filter(
                   (inv) => (inv as any).portfolio_id === portfolio.id
                 )
+                // Calculate portfolio balance from investments
+                const portfolioBalance = portfolioInvestments.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+                
                 return (
                   <Card
                     key={portfolio.id}
@@ -249,13 +252,13 @@ export default function InvestmentsPage() {
                         <div>
                           <p className="text-xs text-muted-foreground">Portfolio Balance</p>
                           <p className="text-lg font-semibold">
-                            {formatCurrency(Number(portfolio.total_balance || 0))}
+                            {formatCurrency(portfolioBalance)}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex gap-2">
-                        <Link href={`/dashboard/portfolios/${portfolio.id}`} className="flex-1">
+                        <Link href={`/dashboard/investments?portfolio=${portfolio.id}`} className="flex-1">
                           <Button variant="outline" size="sm" className="w-full bg-transparent">
                             View Details
                           </Button>
@@ -320,7 +323,7 @@ export default function InvestmentsPage() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">ROI Rate</p>
-                        <p className="text-lg font-semibold">{investment.roi_percentage}%</p>
+                        <p className="text-lg font-semibold">{investment.roi_percentage}% p.a</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Start Date</p>
@@ -343,8 +346,8 @@ export default function InvestmentsPage() {
                     </div>
 
                     {investment.status === "active" && (
-                      <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4 text-sm text-green-800 dark:text-green-200">
-                        Your investment is active and earning {investment.roi_percentage}% returns until {new Date(investment.maturity_date).toLocaleDateString()}
+                      <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-sm text-amber-800 dark:text-amber-200">
+                        Returns will start 4 months after investment date ({new Date(new Date(investment.start_date).getTime() + 4 * 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}) and will be calculated at {investment.roi_percentage}% per annum until {new Date(investment.maturity_date).toLocaleDateString()}
                       </div>
                     )}
                   </CardContent>

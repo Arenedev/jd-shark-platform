@@ -174,8 +174,16 @@ function NewInvestmentContent({ searchParams, router }: any) {
       }
 
       const today = new Date()
-      const startDate = today.toISOString().split("T")[0]
-      const maturityDate = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+      // Use UTC date to avoid timezone issues
+      const year = today.getUTCFullYear()
+      const month = String(today.getUTCMonth() + 1).padStart(2, "0")
+      const day = String(today.getUTCDate()).padStart(2, "0")
+      const startDate = `${year}-${month}-${day}`
+      const maturityDate = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)
+      const maturityYear = maturityDate.getUTCFullYear()
+      const maturityMonth = String(maturityDate.getUTCMonth() + 1).padStart(2, "0")
+      const maturityDay = String(maturityDate.getUTCDate()).padStart(2, "0")
+      const maturityDateStr = `${maturityYear}-${maturityMonth}-${maturityDay}`
 
       // Create investment in investments table (linked to portfolio)
       const { data: investment, error: investmentError } = await supabase
@@ -184,8 +192,8 @@ function NewInvestmentContent({ searchParams, router }: any) {
           portfolio_id: formData.portfolio_id,
           amount: amount,
           start_date: startDate,
-          maturity_date: maturityDate,
-          roi_percentage: 15.0,
+          maturity_date: maturityDateStr,
+          roi_percentage: 10.0,
           status: "active",
           auto_reinvest: false,
         })
