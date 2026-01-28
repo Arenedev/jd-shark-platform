@@ -32,6 +32,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const minLoanAmount = eligible.max_loan_amount * 0.625 // 50% of portfolio value
+    if (amount < minLoanAmount) {
+      return NextResponse.json(
+        { error: `Minimum loan amount is ₦${minLoanAmount.toLocaleString()} (50% of portfolio)` },
+        { status: 400 },
+      )
+    }
+
     // Calculate total due with 0.5% monthly interest
     const monthlyRate = 0.005
     const months = 12 // Standard 1 year loan

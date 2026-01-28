@@ -116,6 +116,10 @@ export default function LoansPage() {
               <p className="text-2xl font-bold">{formatCurrency(eligibility.investment_portfolio_value)}</p>
             </div>
             <div>
+              <p className="text-sm text-muted-foreground">Minimum Loan Amount (50%)</p>
+              <p className="text-2xl font-bold text-accent">{formatCurrency(eligibility.max_loan_amount * 0.625)}</p>
+            </div>
+            <div>
               <p className="text-sm text-muted-foreground">Maximum Loan Amount (80%)</p>
               <p className="text-2xl font-bold text-primary">{formatCurrency(eligibility.max_loan_amount)}</p>
             </div>
@@ -137,12 +141,15 @@ export default function LoansPage() {
               <Input
                 id="amount"
                 type="number"
-                placeholder="Enter amount"
+                placeholder="Enter amount between 50-80% of portfolio"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                min={eligibility.max_loan_amount * 0.625}
                 max={eligibility.max_loan_amount}
               />
-              <p className="text-xs text-muted-foreground">Maximum: {formatCurrency(eligibility.max_loan_amount)}</p>
+              <p className="text-xs text-muted-foreground">
+                Range: {formatCurrency(eligibility.max_loan_amount * 0.625)} - {formatCurrency(eligibility.max_loan_amount)}
+              </p>
             </div>
 
             <Button onClick={handleRequestLoan} disabled={!amount || requesting} className="w-full">

@@ -64,7 +64,9 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             icon="🏆"
             isActive={pathname.includes("/network")}
           />
-          <NavLink href="/dashboard/referrals" label="Referrals" icon="👥" isActive={pathname.includes("/referrals")} />
+          {profile?.base_structure !== "organization" && (
+            <NavLink href="/dashboard/referrals" label="Referrals" icon="👥" isActive={pathname.includes("/referrals")} />
+          )}
           <NavLink href="/dashboard/settings" label="Settings" icon="⚙️" isActive={pathname.includes("/settings")} />
         </nav>
 
@@ -137,13 +139,15 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               isActive={pathname.includes("/network")}
               onClick={() => setMobileMenuOpen(false)}
             />
-            <NavLink
-              href="/dashboard/referrals"
-              label="Referrals"
-              icon="👥"
-              isActive={pathname.includes("/referrals")}
-              onClick={() => setMobileMenuOpen(false)}
-            />
+            {profile?.base_structure !== "organization" && (
+              <NavLink
+                href="/dashboard/referrals"
+                label="Referrals"
+                icon="👥"
+                isActive={pathname.includes("/referrals")}
+                onClick={() => setMobileMenuOpen(false)}
+              />
+            )}
             <NavLink
               href="/dashboard/settings"
               label="Settings"
