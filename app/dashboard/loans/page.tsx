@@ -25,18 +25,30 @@ export default function LoansPage() {
 
   async function loadData() {
     try {
+      setLoading(true)
       const supabase = createClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (!user) return
+      if (!user) {
+        console.log("[v0] No user found")
+        return
+      }
 
-      const [eligibilityData, loansData] = await Promise.all([checkLoanEligibility(user.id), getUserLoans(user.id)])
-
+      console.log("[v0] Loading loan data for user:", user.id)
+      
+      const eligibilityData = await checkLoanEligibility(user.id)
+      console.log("[v0] Eligibility data received in component:", eligibilityData)
+      
       setEligibility(eligibilityData)
+      
+      const loansData = await getUserLoans(user.id)
+      console.log("[v0] Loans data received:", loansData)
+      
       setLoans(loansData)
     } catch (err: any) {
+      console.error("[v0] Error loading data:", err)
       setError(err.message)
     } finally {
       setLoading(false)
@@ -75,7 +87,10 @@ export default function LoansPage() {
     return <div className="p-6">Loading...</div>
   }
 
+  console.log("[v0] Loans page rendering with eligibility:", eligibility)
+
   if (!eligibility?.eligible) {
+    console.log("[v0] User not eligible for loans. eligibility object:", eligibility)
     return (
       <div className="p-6 space-y-4">
         <h1 className="text-3xl font-bold">Organization Loans</h1>
