@@ -55,15 +55,17 @@ export async function requestLoanAction(
     console.log("[v0] Creating loan:", { userId, amount, totalDue })
 
     // Create loan request
+    const monthlyInterest = amount * 0.005 // 0.5% monthly
     const { data: loan, error: loanError } = await supabase
       .from("organization_loans")
       .insert({
-        organization_id: userId,
+        user_id: userId,
         principal_amount: amount,
-        monthly_interest_rate: 0.5,
+        interest_rate: 0.5,
+        monthly_interest: monthlyInterest,
         total_due: totalDue,
         status: "pending",
-        created_at: new Date().toISOString(),
+        maturity_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       })
       .select()
       .single()

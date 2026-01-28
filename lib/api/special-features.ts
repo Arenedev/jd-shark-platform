@@ -2,14 +2,16 @@ import { createClient } from "@/lib/supabase/client"
 
 export interface OrganizationLoan {
   id: string
-  organization_id: string
+  user_id: string
   principal_amount: number
-  monthly_interest_rate: number
+  interest_rate: number
+  monthly_interest: number
   total_due: number
-  amount_paid: number
+  repaid_amount: number
   status: string
   approved_at: string | null
-  due_date: string | null
+  loan_date: string
+  maturity_date: string
   created_at: string
 }
 
@@ -73,7 +75,7 @@ export async function getUserLoans(userId: string): Promise<OrganizationLoan[]> 
   const { data, error } = await supabase
     .from("organization_loans")
     .select("*")
-    .eq("organization_id", userId)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
 
   if (error) {
