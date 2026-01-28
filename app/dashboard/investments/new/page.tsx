@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import DashboardLayout from "@/components/dashboard/layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,8 +14,11 @@ import { createClient } from "@/lib/supabase/client"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { Loader2 } from "lucide-react"
 
-export default function NewInvestmentPage() {
+function NewInvestmentContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const portfolioIdFromUrl = searchParams.get("portfolio_id")
+  
   const [userId, setUserId] = useState<string | null>(null)
   const { profile } = useUserProfile(userId)
   const [loading, setLoading] = useState(true)
@@ -23,18 +26,17 @@ export default function NewInvestmentPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [walletBalance, setWalletBalance] = useState(0)
+  const [portfoliosLoading, setPortfoliosLoading] = useState(true)
+  const [portfolios, setPortfolios] = useState<any[]>([])
   const [formData, setFormData] = useState({
     amount: "",
     lock_type: "none" as "none" | "1_year" | "10_year",
-    portfolio_id: "",
+    portfolio_id: portfolioIdFromUrl || "",
     start_date: "",
     auto_reinvest: false,
   })
-
-  const [portfoliosLoading, setPortfoliosLoading] = useState(true)
+  const [wallet, setWallet] = useState<any | null>(null)
   const [walletLoading, setWalletLoading] = useState(true)
-  const [portfolios, setPortfolios] = useState([])
-  const [wallet, setWallet] = useState(null)
 
   // Get authenticated user ID first
   useEffect(() => {
@@ -46,10 +48,12 @@ export default function NewInvestmentPage() {
         } = await supabase.auth.getUser()
 
         if (!user) {
+          console.log("[v0] New investment: No user, redirecting to login")
           router.push("/auth/login")
           return
         }
 
+        console.log("[v0] New investment: User authenticated:", user.id)
         setUserId(user.id)
 
         // Get wallet balance
@@ -60,29 +64,32 @@ export default function NewInvestmentPage() {
           .single()
 
         if (walletError) {
-          console.error("[v0] Wallet fetch error:", walletError)
-          return
+          console.error("[v0] New investment: Wallet fetch error:", walletError)
+        } else {
+          setWallet(walletData)
+          setWalletBalance(walletData?.balance || 0)
         }
-
-        setWallet(walletData)
-        setWalletBalance(walletData.balance || 0)
         setWalletLoading(false)
 
-        // Get portfolios
+        // Get portfolios - use current_owner_id instead of user_id
         const { data: portfoliosData, error: portfoliosError } = await supabase
           .from("portfolios")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("current_owner_id", user.id)
 
         if (portfoliosError) {
-          console.error("[v0] Portfolios fetch error:", portfoliosError)
-          return
+          console.error("[v0] New investment: Portfolios fetch error:", portfoliosError)
+        } else {
+          console.log("[v0] New investment: Portfolios loaded:", portfoliosData?.length)
+          setPortfolios(portfoliosData || [])
         }
-
-        setPortfolios(portfoliosData)
         setPortfoliosLoading(false)
+        setLoading(false)
       } catch (err) {
         console.error("[v0] New investment auth error:", err)
+        setWalletLoading(false)
+        setPortfoliosLoading(false)
+        setLoading(false)
         router.push("/auth/login")
       }
     }
@@ -373,5 +380,13 @@ export default function NewInvestmentPage() {
         </Card>
       </div>
     </DashboardLayout>
+  )
+}
+
+export default function NewInvestmentPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewInvestmentContent />
+    </Suspense>
   )
 }

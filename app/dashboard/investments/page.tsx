@@ -264,7 +264,7 @@ export default function InvestmentsPage() {
                             View Details
                           </Button>
                         </Link>
-                        <Link href="/dashboard/investments/new" className="flex-1">
+                        <Link href={`/dashboard/investments/new?portfolio_id=${portfolio.id}`} className="flex-1">
                           <Button size="sm" className="w-full bg-primary hover:bg-primary/90">
                             Invest Now
                           </Button>
