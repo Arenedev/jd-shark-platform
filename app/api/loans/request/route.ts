@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    // Create client with request context for proper auth
-    const supabase = createClient()
+    // Create client with request context for proper auth - MUST AWAIT
+    const supabase = await createClient()
+    
+    console.log("[v0] Supabase client created")
     
     // Get the user - the auth context should be available from cookies
     const {
