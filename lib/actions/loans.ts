@@ -2,7 +2,16 @@
 
 import { createClient } from "@/lib/supabase/server"
 
-export async function requestLoanAction(amount: number, userId: string) {
+export async function requestLoanAction(
+  amount: number,
+  userId: string,
+  profile: {
+    base_structure: string
+    personal_capital: number
+    full_name?: string
+    email?: string
+  },
+) {
   try {
     const supabase = await createClient()
 
@@ -16,19 +25,11 @@ export async function requestLoanAction(amount: number, userId: string) {
       throw new Error("Invalid loan amount")
     }
 
-    // Get user profile to check eligibility
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("base_structure, personal_capital, full_name, email")
-      .eq("id", userId)
-      .single()
-
-    if (profileError || !profile) {
-      console.error("[v0] Profile fetch error:", profileError?.message)
-      throw new Error("User profile not found")
+    if (!profile) {
+      throw new Error("User profile is required")
     }
 
-    console.log("[v0] User profile found:", profile.base_structure)
+    console.log("[v0] User profile received:", profile.base_structure)
 
     if (profile.base_structure !== "organization") {
       throw new Error("Only Organizations are eligible for loans")

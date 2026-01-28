@@ -71,8 +71,19 @@ export default function LoansPage() {
         throw new Error("Please log in to request a loan")
       }
 
+      // Get the profile data on the client side where RLS allows it
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("base_structure, personal_capital, full_name, email")
+        .eq("id", user.id)
+        .single()
+
+      if (profileError || !profile) {
+        throw new Error("User profile not found")
+      }
+
       const loanAmount = Number.parseFloat(amount)
-      const result = await requestLoanAction(loanAmount, user.id)
+      const result = await requestLoanAction(loanAmount, user.id, profile)
 
       setSuccess("Loan request submitted successfully!")
       setAmount("")
