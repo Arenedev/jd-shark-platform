@@ -176,7 +176,6 @@ function NewInvestmentContent() {
         .from("investments")
         .insert({
           user_id: userId,
-          portfolio_id: formData.portfolio_id,
           principal: amount,
           lock_type: formData.lock_type,
           base_roi: 1.0, // Default base ROI
@@ -188,8 +187,6 @@ function NewInvestmentContent() {
           returns_start_at: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000).toISOString(),
           next_return_date: null,
           last_return_date: null,
-          start_date: formData.start_date,
-          auto_reinvest: formData.auto_reinvest,
         })
         .select()
 
@@ -201,11 +198,19 @@ function NewInvestmentContent() {
       console.log("[v0] Investment created:", investment)
 
       // Deduct amount from wallet
-      const newBalance = (wallet?.balance || 0) - amount
-      await supabase.from("wallets").update({ balance: newBalance }).eq("user_id", userId)
+      if (investment && investment.length > 0) {
+        const { error: walletUpdateError } = await supabase
+          .from("wallets")
+          .update({ balance: walletBalance - amount })
+          .eq("user_id", userId)
+
+        if (walletUpdateError) {
+          console.error("[v0] Wallet update error:", walletUpdateError)
+        }
+      }
 
       setSuccess("Investment created successfully! Your investment is pending admin approval.")
-      setFormData({ amount: "", lock_type: "none", portfolio_id: "", start_date: "", auto_reinvest: false })
+      setFormData({ amount: "", lock_type: "none", portfolio_id: "" })
 
       // Redirect after 2 seconds
       setTimeout(() => {
