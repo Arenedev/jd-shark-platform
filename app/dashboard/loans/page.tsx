@@ -64,6 +64,7 @@ export default function LoansPage() {
       const response = await fetch("/api/loans/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ amount: Number.parseFloat(amount) }),
       })
 
