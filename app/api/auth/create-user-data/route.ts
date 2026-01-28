@@ -44,10 +44,9 @@ export async function POST(request: NextRequest) {
           kyc_status: "pending",
           base_structure: userBaseStructure,
           current_rank: userBaseStructure === "associate" ? "fin_starter" : null,
-          referrer_id: referrerId || null,
           personal_capital: 0,
           network_capital: 0,
-          grand_network_capital: 0,
+          returns_balance: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -96,9 +95,7 @@ export async function POST(request: NextRequest) {
           currency: "NGN",
           total_funded: 0,
           total_withdrawn: 0,
-          earnings_balance: 0,
-          pending_deposits: 0,
-          locked_capital: 0,
+          personal_capital: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

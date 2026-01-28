@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, Mail, Lock, TrendingUp } from "lucide-react"
+import { Loader2, Mail, Lock, TrendingUp, Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -111,17 +112,26 @@ export default function LoginPage() {
                 <Lock className="w-4 h-4" />
                 Password
               </Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                disabled={loading}
-                className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                  className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#a8b2c1] hover:text-[#5dade2] transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <Button

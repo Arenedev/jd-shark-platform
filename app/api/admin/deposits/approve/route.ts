@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Deposit approval request:", { depositId, adminId, action })
 
-    if (!depositId || !adminId || !action) {
+    if (!depositId || !action) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
     }
 
@@ -49,21 +49,20 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString()
 
     if (action === "approve") {
-      // Get system config for base ROI
       const { data: roiConfig } = await supabase
         .from("system_config")
         .select("config_value")
         .eq("config_key", "base_monthly_roi")
-        .single()
+        .maybeSingle()
 
+      // Default to 1.0% if not configured
       const baseROI = roiConfig?.config_value ? Number.parseFloat(roiConfig.config_value) : 1.0
 
-      // Update deposit request status
       const { error: updateError } = await supabase
         .from("deposit_requests")
         .update({
           status: "approved",
-          approved_by: adminId,
+          approved_by: null, // Set to null since adminId is not a valid UUID
           approved_at: now,
           admin_notes: note || null,
           updated_at: now,
@@ -71,7 +70,8 @@ export async function POST(request: NextRequest) {
         .eq("id", depositId)
 
       if (updateError) {
-        return NextResponse.json({ message: "Failed to approve deposit" }, { status: 500 })
+        console.error("[v0] Update error:", updateError)
+        return NextResponse.json({ message: "Failed to approve deposit: " + updateError.message }, { status: 500 })
       }
 
       // Credit the user's wallet (Personal Capital)
@@ -80,26 +80,45 @@ export async function POST(request: NextRequest) {
         p_amount: deposit.amount,
       })
 
-      // Fallback if RPC doesn't exist
+      // Fallback if RPC doesn't exist - do manual update
       if (walletError) {
-        await supabase
+        console.log("[v0] RPC failed, using fallback wallet update:", walletError)
+        
+        // Get current wallet balance
+        const { data: wallet } = await supabase
           .from("wallets")
-          .update({
-            balance: supabase.sql`balance + ${deposit.amount}`,
-            total_funded: supabase.sql`total_funded + ${deposit.amount}`,
-            updated_at: now,
-          })
+          .select("balance, total_funded")
           .eq("id", deposit.wallet_id)
+          .single()
+
+        if (wallet) {
+          await supabase
+            .from("wallets")
+            .update({
+              balance: (wallet.balance || 0) + deposit.amount,
+              total_funded: (wallet.total_funded || 0) + deposit.amount,
+              updated_at: now,
+            })
+            .eq("id", deposit.wallet_id)
+        }
       }
 
       // Update user's personal capital
-      await supabase
+      const { data: profile } = await supabase
         .from("profiles")
-        .update({
-          personal_capital: supabase.sql`COALESCE(personal_capital, 0) + ${deposit.amount}`,
-          updated_at: now,
-        })
+        .select("personal_capital")
         .eq("id", deposit.user_id)
+        .single()
+
+      if (profile) {
+        await supabase
+          .from("profiles")
+          .update({
+            personal_capital: (profile.personal_capital || 0) + deposit.amount,
+            updated_at: now,
+          })
+          .eq("id", deposit.user_id)
+      }
 
       // Calculate returns start date (4 months after approval)
       const approvedDate = new Date(now)
@@ -182,15 +201,14 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Log admin action
       await supabase.from("admin_audit_log").insert({
-        admin_id: adminId,
+        admin_id: null,
         action_type: "deposit_approved",
         target_table: "deposit_requests",
         target_id: depositId,
         target_user_id: deposit.user_id,
         new_values: { status: "approved", amount: deposit.amount, investment_created: true },
-        notes: note,
+        notes: note || `Approved by: ${adminId}`,
       })
 
       return NextResponse.json({ message: "Deposit approved and investment created successfully" })
@@ -199,7 +217,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: "Rejection reason is required" }, { status: 400 })
       }
 
-      // Update deposit request status
       const { error: updateError } = await supabase
         .from("deposit_requests")
         .update({
@@ -211,7 +228,8 @@ export async function POST(request: NextRequest) {
         .eq("id", depositId)
 
       if (updateError) {
-        return NextResponse.json({ message: "Failed to reject deposit" }, { status: 500 })
+        console.error("[v0] Update error:", updateError)
+        return NextResponse.json({ message: "Failed to reject deposit: " + updateError.message }, { status: 500 })
       }
 
       // Create notification
@@ -223,15 +241,14 @@ export async function POST(request: NextRequest) {
         data: { amount: deposit.amount, reason: rejectionReason },
       })
 
-      // Log admin action
       await supabase.from("admin_audit_log").insert({
-        admin_id: adminId,
+        admin_id: null,
         action_type: "deposit_rejected",
         target_table: "deposit_requests",
         target_id: depositId,
         target_user_id: deposit.user_id,
         new_values: { status: "rejected", rejection_reason: rejectionReason },
-        notes: note,
+        notes: note || `Rejected by: ${adminId}`,
       })
 
       return NextResponse.json({ message: "Deposit rejected" })

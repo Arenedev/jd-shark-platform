@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { createClient } from "@/lib/supabase/client"
 import { verifyReferralCode } from "@/lib/api/referrals"
-import { Loader2, Mail, Lock, User, Sparkles, UserCheck, Building2, Users, Briefcase } from "lucide-react"
+import { Loader2, Mail, Lock, User, Sparkles, UserCheck, Building2, Users, Briefcase, Eye, EyeOff } from "lucide-react"
 
 type BaseStructure = "investor" | "organization" | "associate"
 
@@ -26,6 +26,10 @@ function RegisterForm() {
   const [referrerName, setReferrerName] = useState<string | null>(null)
   const [referrerId, setReferrerId] = useState<string | null>(null)
   const [step, setStep] = useState<1 | 2>(1)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
+  const [checkingEmail, setCheckingEmail] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -70,6 +74,40 @@ function RegisterForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+    
+    // Check email availability in real-time
+    if (name === "email" && value) {
+      checkEmailAvailability(value)
+    }
+  }
+
+  const checkEmailAvailability = async (email: string) => {
+    setCheckingEmail(true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle()
+
+      if (error) {
+        console.error("[v0] Email check error:", error)
+        setEmailError(null)
+        return
+      }
+
+      if (data) {
+        setEmailError("Email already registered. Please use a different email.")
+      } else {
+        setEmailError(null)
+      }
+    } catch (err) {
+      console.error("[v0] Email availability check error:", err)
+      setEmailError(null)
+    } finally {
+      setCheckingEmail(false)
+    }
   }
 
   const handleBaseStructureSelect = (value: BaseStructure) => {
@@ -103,6 +141,12 @@ function RegisterForm() {
     e.preventDefault()
     setError(null)
     setSuccess(false)
+
+    // Check if email already exists
+    if (emailError) {
+      setError(emailError)
+      return
+    }
 
     if (formData.password !== formData.passwordConfirm) {
       setError("Passwords do not match")
@@ -153,11 +197,13 @@ function RegisterForm() {
           })
 
           if (!createUserResponse.ok) {
-            const error = await createUserResponse.json()
-            console.error("[v0] Profile creation warning:", error)
+            const errorData = await createUserResponse.json()
+            console.error("[v0] Profile creation error:", errorData)
+            throw new Error(errorData.message || "Failed to create user profile")
           }
         } catch (err) {
           console.error("[v0] Profile creation fetch error:", err)
+          throw err
         }
       }
 
@@ -434,6 +480,15 @@ function RegisterForm() {
                   disabled={loading}
                   className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all"
                 />
+                {checkingEmail && (
+                  <p className="text-xs text-[#5dade2] flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Checking email...
+                  </p>
+                )}
+                {emailError && (
+                  <p className="text-xs text-red-400">{emailError}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -457,17 +512,26 @@ function RegisterForm() {
                   <Lock className="w-4 h-4" />
                   Password
                 </Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  disabled={loading}
-                  className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                    className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#a8b2c1] hover:text-[#5dade2] transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 <p className="text-xs text-[#2d3e52]">Minimum 6 characters</p>
               </div>
 
@@ -476,17 +540,26 @@ function RegisterForm() {
                   <Lock className="w-4 h-4" />
                   Confirm Password
                 </Label>
-                <Input
-                  id="passwordConfirm"
-                  name="passwordConfirm"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.passwordConfirm}
-                  onChange={handleChange}
-                  required
-                  disabled={loading}
-                  className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all"
-                />
+                <div className="relative">
+                  <Input
+                    id="passwordConfirm"
+                    name="passwordConfirm"
+                    type={showPasswordConfirm ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.passwordConfirm}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                    className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#a8b2c1] hover:text-[#5dade2] transition-colors"
+                  >
+                    {showPasswordConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex gap-2">
