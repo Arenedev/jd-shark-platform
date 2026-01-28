@@ -40,10 +40,31 @@ export interface Incentive {
 export async function checkLoanEligibility(userId: string) {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc("calculate_loan_eligibility", { p_user_id: userId })
+  // First, check if user is an organization
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("base_structure, personal_capital")
+    .eq("id", userId)
+    .single()
 
-  if (error) throw error
-  return data?.[0] || { eligible: false, max_loan_amount: 0, investment_portfolio_value: 0 }
+  if (profileError) {
+    console.error("[v0] Profile fetch error:", profileError)
+    throw profileError
+  }
+
+  console.log("[v0] User profile:", { base_structure: profileData?.base_structure, personal_capital: profileData?.personal_capital })
+
+  if (profileData?.base_structure !== "organization") {
+    console.log("[v0] User is not an organization:", profileData?.base_structure)
+    return { eligible: false, max_loan_amount: 0, investment_portfolio_value: 0 }
+  }
+
+  const portfolio_value = profileData?.personal_capital || 0
+  const max_loan_amount = portfolio_value * 0.8
+
+  console.log("[v0] Loan eligibility calculated:", { eligible: true, max_loan_amount, portfolio_value })
+
+  return { eligible: true, max_loan_amount, investment_portfolio_value: portfolio_value }
 }
 
 export async function getUserLoans(userId: string): Promise<OrganizationLoan[]> {
