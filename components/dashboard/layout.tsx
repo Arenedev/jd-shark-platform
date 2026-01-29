@@ -65,20 +65,12 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             isActive={pathname.includes("/network")}
           />
           {profile?.base_structure === "organization" && (
-            <>
-              <NavLink
-                href="/dashboard/loans"
-                label="Loans"
-                icon="💰"
-                isActive={pathname.includes("/loans")}
-              />
-              <NavLink
-                href="/dashboard/bonuses"
-                label="Bonuses"
-                icon="🎁"
-                isActive={pathname.includes("/bonuses")}
-              />
-            </>
+            <NavLink
+              href="/dashboard/loans"
+              label="Loans"
+              icon="💰"
+              isActive={pathname.includes("/loans")}
+            />
           )}
           {profile?.base_structure !== "organization" && (
             <NavLink href="/dashboard/referrals" label="Referrals" icon="👥" isActive={pathname.includes("/referrals")} />
@@ -156,22 +148,13 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               onClick={() => setMobileMenuOpen(false)}
             />
             {profile?.base_structure === "organization" && (
-              <>
-                <NavLink
-                  href="/dashboard/loans"
-                  label="Loans"
-                  icon="💰"
-                  isActive={pathname.includes("/loans")}
-                  onClick={() => setMobileMenuOpen(false)}
-                />
-                <NavLink
-                  href="/dashboard/bonuses"
-                  label="Bonuses"
-                  icon="🎁"
-                  isActive={pathname.includes("/bonuses")}
-                  onClick={() => setMobileMenuOpen(false)}
-                />
-              </>
+              <NavLink
+                href="/dashboard/loans"
+                label="Loans"
+                icon="💰"
+                isActive={pathname.includes("/loans")}
+                onClick={() => setMobileMenuOpen(false)}
+              />
             )}
             {profile?.base_structure !== "organization" && (
               <NavLink
