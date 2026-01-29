@@ -72,8 +72,8 @@ export default function LoansPage() {
     setShowRepaymentDialog(true)
   }
 
-  async function handleSubmitRepayment() {
-    if (!repaymentLoanId || !repaymentAmount) return
+  async function handleGeneratePaymentCode() {
+    if (!repaymentLoanId) return
 
     setRequesting(true)
     setError("")
@@ -85,28 +85,23 @@ export default function LoansPage() {
       } = await supabase.auth.getUser()
 
       if (!user) {
-        throw new Error("Please log in to submit repayment")
+        throw new Error("Please log in to generate payment code")
       }
 
-      const amount = Number.parseFloat(repaymentAmount)
       const loan = loans.find((l) => l.id === repaymentLoanId)
 
       if (!loan) {
         throw new Error("Loan not found")
       }
 
-      if (amount < loan.total_due) {
-        throw new Error(`Minimum repayment amount is ₦${loan.total_due.toLocaleString()} (total due with interest)`)
-      }
-
-      // Send repayment request without file upload
+      // Generate payment code
       const response = await fetch("/api/user/loan-repayments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           loanId: repaymentLoanId,
           userId: user.id,
-          amount: amount.toString(),
+          amount: repaymentAmount,
           principalAmount: loan.principal_amount.toString(),
           interestAccrued: (loan.total_due - loan.principal_amount).toString(),
         }),
@@ -115,13 +110,35 @@ export default function LoansPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to submit repayment")
+        throw new Error(data.error || "Failed to generate payment code")
       }
 
       setGeneratedPaymentCode(data.paymentCode)
-      setSuccess("Repayment request submitted successfully!")
-      
-      // Keep modal open to show payment code
+      setSuccess("Payment code generated successfully! Use it as your transaction description.")
+    } catch (err: any) {
+      setError(err.message || "Failed to generate payment code")
+    } finally {
+      setRequesting(false)
+    }
+  }
+
+  async function handleSubmitRepayment() {
+    if (!repaymentLoanId || !generatedPaymentCode) {
+      setError("Please generate a payment code first")
+      return
+    }
+
+    setRequesting(true)
+    setError("")
+
+    try {
+      // Simply close modal - the repayment request was already created when code was generated
+      setSuccess("Repayment submitted successfully! Please make your transfer using the provided code.")
+      setShowRepaymentDialog(false)
+      setRepaymentLoanId(null)
+      setRepaymentAmount("")
+      setGeneratedPaymentCode("")
+      await loadData()
     } catch (err: any) {
       setError(err.message || "Failed to submit repayment")
     } finally {
@@ -355,8 +372,8 @@ export default function LoansPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="sticky top-0 bg-background border-b">
-              <CardTitle>Submit Loan Repayment</CardTitle>
-              <CardDescription>Upload payment proof to submit your loan repayment</CardDescription>
+              <CardTitle>Loan Repayment</CardTitle>
+              <CardDescription>Generate a payment code and submit your repayment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 p-4 sm:p-6">
               {error && (
@@ -405,12 +422,19 @@ export default function LoansPage() {
                     </div>
                   </div>
 
-                  {/* Payment Proof Upload */}
+                  {/* Generate Payment Code Section */}
                   {!generatedPaymentCode ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Click "Submit Repayment" to generate your payment reference code. Use this code as the transaction description when making your bank transfer.
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground bg-amber-50 dark:bg-amber-950/20 p-3 rounded border border-amber-200 dark:border-amber-900">
+                        ⚠️ First, generate a payment code that you'll use as the transaction description when making your bank transfer.
                       </p>
+                      <Button 
+                        className="w-full" 
+                        onClick={handleGeneratePaymentCode}
+                        disabled={requesting}
+                      >
+                        {requesting ? "Generating..." : "Generate Payment Code"}
+                      </Button>
                     </div>
                   ) : (
                     <div className="space-y-3 bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-900">
@@ -449,15 +473,15 @@ export default function LoansPage() {
                   }}
                   disabled={requesting}
                 >
-                  {generatedPaymentCode ? "Done" : "Cancel"}
+                  Cancel
                 </Button>
-                {!generatedPaymentCode && (
+                {generatedPaymentCode && (
                   <Button
                     className="flex-1"
                     onClick={handleSubmitRepayment}
-                    disabled={requesting || !repaymentAmount}
+                    disabled={requesting}
                   >
-                    {requesting ? "Generating..." : "Submit Repayment"}
+                    {requesting ? "Submitting..." : "Submit Repayment"}
                   </Button>
                 )}
               </div>
