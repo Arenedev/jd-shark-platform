@@ -33,21 +33,6 @@ CREATE POLICY "Users can create own repayment requests"
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- Admin users can view and update all repayment requests
-CREATE POLICY "Admins can view all repayment requests"
-  ON public.loan_repayment_requests
-  FOR SELECT
-  USING (EXISTS (
-    SELECT 1 FROM public.admin_users WHERE user_id = auth.uid()
-  ));
-
-CREATE POLICY "Admins can update repayment requests"
-  ON public.loan_repayment_requests
-  FOR UPDATE
-  USING (EXISTS (
-    SELECT 1 FROM public.admin_users WHERE user_id = auth.uid()
-  ));
-
 -- Create index for faster queries
 CREATE INDEX IF NOT EXISTS idx_loan_repayment_requests_loan_id ON public.loan_repayment_requests(loan_id);
 CREATE INDEX IF NOT EXISTS idx_loan_repayment_requests_user_id ON public.loan_repayment_requests(user_id);

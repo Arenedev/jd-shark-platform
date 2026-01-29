@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     // Use service role client - the admin page already has authentication checks
     const supabase = createServiceRoleClient()
 
-    // Fetch all loans with user profile details
+    // Fetch all loans with user profile details including bank info
     const { data: loans, error } = await supabase
       .from("organization_loans")
       .select(
@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
           full_name,
           email,
           base_structure,
-          personal_capital
+          personal_capital,
+          bank_name,
+          account_name,
+          account_number
         )
       `
       )

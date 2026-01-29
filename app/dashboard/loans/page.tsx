@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatCurrency } from "@/lib/utils"
 import { checkLoanEligibility, getUserLoans, type OrganizationLoan } from "@/lib/api/special-features"
 import { requestLoanAction } from "@/lib/actions/loans"
+import { requestLoanRepaymentAction } from "@/lib/actions/loan-repayment"
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<OrganizationLoan[]>([])
@@ -19,6 +20,9 @@ export default function LoansPage() {
   const [amount, setAmount] = useState("")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [repaymentLoanId, setRepaymentLoanId] = useState<string | null>(null)
+  const [repaymentAmount, setRepaymentAmount] = useState("")
+  const [showRepaymentDialog, setShowRepaymentDialog] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -53,6 +57,53 @@ export default function LoansPage() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleRepaymentClick(loan: OrganizationLoan) {
+    setRepaymentLoanId(loan.id)
+    setRepaymentAmount(loan.total_due.toString())
+    setShowRepaymentDialog(true)
+  }
+
+  async function handleSubmitRepayment() {
+    if (!repaymentLoanId || !repaymentAmount) return
+
+    setRequesting(true)
+    setError("")
+
+    try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        throw new Error("Please log in to submit repayment")
+      }
+
+      const amount = Number.parseFloat(repaymentAmount)
+      const loan = loans.find((l) => l.id === repaymentLoanId)
+
+      if (!loan) {
+        throw new Error("Loan not found")
+      }
+
+      if (amount < loan.total_due) {
+        throw new Error(`Minimum repayment amount is ₦${loan.total_due.toLocaleString()} (total due with interest)`)
+      }
+
+      await requestLoanRepaymentAction(repaymentLoanId, user.id, loan.principal_amount, loan.total_due - loan.principal_amount)
+
+      setSuccess("Repayment request submitted! Please transfer ₦" + amount.toLocaleString() + " to the provided account details.")
+      setShowRepaymentDialog(false)
+      setRepaymentLoanId(null)
+      setRepaymentAmount("")
+      await loadData()
+    } catch (err: any) {
+      setError(err.message || "Failed to submit repayment")
+    } finally {
+      setRequesting(false)
     }
   }
 
@@ -219,15 +270,45 @@ export default function LoansPage() {
                   </div>
 
                   {loan.status === "active" && (
-                    <div className="pt-2 border-t space-y-1">
+                    <div className="pt-2 border-t space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Amount Paid</span>
-                        <span className="font-medium">{formatCurrency(loan.amount_paid)}</span>
+                        <span className="font-medium">{formatCurrency(loan.repaid_amount)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Balance</span>
-                        <span className="font-medium">{formatCurrency(loan.total_due - loan.amount_paid)}</span>
+                        <span className="font-medium">{formatCurrency(loan.total_due - (loan.repaid_amount || 0))}</span>
                       </div>
+
+                      {/* Bank Account Details for Repayment */}
+                      {loan.profiles && (
+                        <div className="bg-accent/5 p-3 rounded-md space-y-2 text-sm">
+                          <p className="font-semibold text-foreground">JDShark Repayment Account</p>
+                          <div className="space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Account Name:</span>
+                              <span className="font-medium">{loan.profiles.account_name || "Not provided"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Bank Name:</span>
+                              <span className="font-medium">{loan.profiles.bank_name || "Not provided"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Account Number:</span>
+                              <span className="font-medium">{loan.profiles.account_number || "Not provided"}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="w-full mt-2"
+                        onClick={() => handleRepaymentClick(loan)}
+                      >
+                        Repay Loan
+                      </Button>
                     </div>
                   )}
 
@@ -240,6 +321,95 @@ export default function LoansPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Repayment Dialog */}
+      {showRepaymentDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle>Loan Repayment</CardTitle>
+              <CardDescription>Submit your loan repayment request</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {loans.find((l) => l.id === repaymentLoanId) && (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Principal Amount</p>
+                    <p className="text-lg font-semibold">{formatCurrency(loans.find((l) => l.id === repaymentLoanId)?.principal_amount || 0)}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Interest Accrued</p>
+                    <p className="text-lg font-semibold text-accent">{formatCurrency((loans.find((l) => l.id === repaymentLoanId)?.total_due || 0) - (loans.find((l) => l.id === repaymentLoanId)?.principal_amount || 0))}</p>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <p className="text-sm text-muted-foreground">Total Repayment Amount</p>
+                    <p className="text-2xl font-bold text-primary">{formatCurrency(loans.find((l) => l.id === repaymentLoanId)?.total_due || 0)}</p>
+                  </div>
+
+                  {/* Bank Details */}
+                  {loans.find((l) => l.id === repaymentLoanId)?.profiles && (
+                    <div className="bg-accent/5 p-3 rounded-md space-y-2 text-sm">
+                      <p className="font-semibold text-foreground">Transfer to:</p>
+                      <div className="space-y-1">
+                        <div>
+                          <span className="text-muted-foreground">Account Name: </span>
+                          <span className="font-medium">{loans.find((l) => l.id === repaymentLoanId)?.profiles?.account_name || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Bank: </span>
+                          <span className="font-medium">{loans.find((l) => l.id === repaymentLoanId)?.profiles?.bank_name || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Account Number: </span>
+                          <span className="font-medium">{loans.find((l) => l.id === repaymentLoanId)?.profiles?.account_number || "N/A"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="repayment-amount">Amount to Pay (₦)</Label>
+                    <Input
+                      id="repayment-amount"
+                      type="number"
+                      value={repaymentAmount}
+                      onChange={(e) => setRepaymentAmount(e.target.value)}
+                      min={loans.find((l) => l.id === repaymentLoanId)?.total_due || 0}
+                      disabled={requesting}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1 bg-transparent"
+                  onClick={() => setShowRepaymentDialog(false)}
+                  disabled={requesting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleSubmitRepayment}
+                  disabled={requesting || !repaymentAmount}
+                >
+                  {requesting ? "Submitting..." : "Submit Repayment"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
