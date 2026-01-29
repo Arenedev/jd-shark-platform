@@ -15,10 +15,9 @@ import { Card } from "@/components/ui/card"
 import { useSearchParams } from "next/navigation"
 import { useRouter } from "next/navigation"
 import { useState, useEffect, Suspense } from "react"
-import { useUserProfile } from "@/hooks/useUserProfile" // Import useUserProfile hook
-import { createClient } from "@/utils/supabaseClient" // Import createClient function
-import DashboardLayout from "@/layouts/DashboardLayout" // Import DashboardLayout component
-import Loader2 from "@/components/ui/loader2" // Import Loader2 component
+import { useUserProfile } from "@/hooks/use-user-profile"
+import { createClient } from "@/lib/supabase/client"
+import { Loader2 } from "lucide-react"
 
 function NewInvestmentContent() {
   const router = useRouter()
