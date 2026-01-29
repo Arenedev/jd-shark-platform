@@ -25,6 +25,7 @@ export default function LoansPage() {
   const [repaymentLoanId, setRepaymentLoanId] = useState<string | null>(null)
   const [repaymentAmount, setRepaymentAmount] = useState("")
   const [showRepaymentDialog, setShowRepaymentDialog] = useState(false)
+  const [generatedPaymentCode, setGeneratedPaymentCode] = useState<string>("")
   const [paymentProof, setPaymentProof] = useState<File | null>(null)
   const [proofPreview, setProofPreview] = useState<string>("")
 
@@ -67,28 +68,12 @@ export default function LoansPage() {
   async function handleRepaymentClick(loan: OrganizationLoan) {
     setRepaymentLoanId(loan.id)
     setRepaymentAmount(loan.total_due.toString())
-    setPaymentProof(null)
-    setProofPreview("")
+    setGeneratedPaymentCode("")
     setShowRepaymentDialog(true)
   }
 
-  function handleProofFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) {
-      setPaymentProof(file)
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setProofPreview(event.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   async function handleSubmitRepayment() {
-    if (!repaymentLoanId || !repaymentAmount || !paymentProof) {
-      setError("Please upload payment proof before submitting")
-      return
-    }
+    if (!repaymentLoanId || !repaymentAmount) return
 
     setRequesting(true)
     setError("")
@@ -114,32 +99,29 @@ export default function LoansPage() {
         throw new Error(`Minimum repayment amount is ₦${loan.total_due.toLocaleString()} (total due with interest)`)
       }
 
-      // Create a FormData object to send the file
-      const formData = new FormData()
-      formData.append("file", paymentProof)
-      formData.append("loanId", repaymentLoanId)
-      formData.append("userId", user.id)
-      formData.append("amount", amount.toString())
-      formData.append("principalAmount", loan.principal_amount.toString())
-      formData.append("interestAccrued", (loan.total_due - loan.principal_amount).toString())
-
-      // Upload payment proof and create repayment request
+      // Send repayment request without file upload
       const response = await fetch("/api/user/loan-repayments", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          loanId: repaymentLoanId,
+          userId: user.id,
+          amount: amount.toString(),
+          principalAmount: loan.principal_amount.toString(),
+          interestAccrued: (loan.total_due - loan.principal_amount).toString(),
+        }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Failed to submit repayment")
+        throw new Error(data.error || "Failed to submit repayment")
       }
 
-      setSuccess("Repayment request submitted successfully! Admin will review your payment proof and update the loan status.")
-      setShowRepaymentDialog(false)
-      setRepaymentLoanId(null)
-      setRepaymentAmount("")
-      setPaymentProof(null)
-      setProofPreview("")
-      await loadData()
+      setGeneratedPaymentCode(data.paymentCode)
+      setSuccess("Repayment request submitted successfully!")
+      
+      // Keep modal open to show payment code
     } catch (err: any) {
       setError(err.message || "Failed to submit repayment")
     } finally {
@@ -202,6 +184,14 @@ export default function LoansPage() {
       setError(err.message || "Failed to request loan")
     } finally {
       setRequesting(false)
+    }
+  }
+
+  function handleProofFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (file) {
+      setPaymentProof(file)
+      setProofPreview(URL.createObjectURL(file))
     }
   }
 
@@ -416,58 +406,61 @@ export default function LoansPage() {
                   </div>
 
                   {/* Payment Proof Upload */}
-                  <div className="space-y-2">
-                    <Label>Upload Payment Proof *</Label>
-                    <div className="border-2 border-dashed border-muted rounded-lg p-4 text-center cursor-pointer hover:bg-accent/5 transition">
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={handleProofFileChange}
-                        className="hidden"
-                        id="proof-upload"
-                      />
-                      <label htmlFor="proof-upload" className="cursor-pointer block">
-                        {proofPreview ? (
-                          <div className="space-y-2">
-                            {paymentProof?.type.startsWith("image") ? (
-                              <img src={proofPreview || "/placeholder.svg"} alt="Payment proof" className="h-20 sm:h-24 mx-auto rounded" />
-                            ) : (
-                              <div className="text-sm text-muted-foreground">📄 {paymentProof?.name}</div>
-                            )}
-                            <p className="text-xs text-muted-foreground">Click to change</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium">📸 Upload Payment Screenshot or Receipt</p>
-                            <p className="text-xs text-muted-foreground">PNG, JPG, GIF, or PDF (Max 5MB)</p>
-                          </div>
-                        )}
-                      </label>
+                  {!generatedPaymentCode ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Click "Submit Repayment" to generate your payment reference code. Use this code as the transaction description when making your bank transfer.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-3 bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-900">
+                      <p className="font-semibold text-foreground text-green-900 dark:text-green-100">✓ Payment Code Generated</p>
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Use this code as payment description:</p>
+                        <div className="bg-white dark:bg-slate-900 p-3 rounded border border-green-300 dark:border-green-700 flex items-center justify-between gap-2">
+                          <code className="text-lg font-mono font-bold text-primary">{generatedPaymentCode}</code>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(generatedPaymentCode)
+                              setSuccess("Code copied to clipboard!")
+                            }}
+                            className="px-2 py-1 text-xs bg-primary text-white rounded hover:bg-primary/90"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Transfer ₦{repaymentAmount} to the account above using this code as the transaction description.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Buttons */}
-                  <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4 border-t">
-                    <Button
-                      variant="outline"
-                      className="flex-1 bg-transparent"
-                      onClick={() => {
-                        setShowRepaymentDialog(false)
-                        setPaymentProof(null)
-                        setProofPreview("")
-                      }}
-                      disabled={requesting}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      className="flex-1"
-                      onClick={handleSubmitRepayment}
-                      disabled={requesting || !repaymentAmount || !paymentProof}
-                    >
-                      {requesting ? "Submitting..." : "Submit Repayment"}
-                    </Button>
-                  </div>
+              {/* Buttons */}
+              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  className="flex-1 bg-transparent"
+                  onClick={() => {
+                    setShowRepaymentDialog(false)
+                    setGeneratedPaymentCode("")
+                    setRepaymentLoanId(null)
+                    setRepaymentAmount("")
+                  }}
+                  disabled={requesting}
+                >
+                  {generatedPaymentCode ? "Done" : "Cancel"}
+                </Button>
+                {!generatedPaymentCode && (
+                  <Button
+                    className="flex-1"
+                    onClick={handleSubmitRepayment}
+                    disabled={requesting || !repaymentAmount}
+                  >
+                    {requesting ? "Generating..." : "Submit Repayment"}
+                  </Button>
+                )}
+              </div>
                 </>
               )}
             </CardContent>
