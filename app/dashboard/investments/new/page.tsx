@@ -169,7 +169,24 @@ function NewInvestmentContent() {
       const amount = Number.parseFloat(formData.amount)
       const supabase = createClient()
 
-      console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type)
+      console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type, "account_type:", profile?.base_structure)
+
+      // Calculate ROI based on account type and investment amount
+      let baseRoi = 1.0
+      let effectiveRoi = 1.0
+      let lcrBonus = 0
+
+      if (profile?.base_structure === "investor") {
+        // Investor account: 7% for ≤50M, 8% for >50M
+        baseRoi = amount <= 50000000 ? 7.0 : 8.0
+        effectiveRoi = baseRoi
+        lcrBonus = 0 // No lock bonuses for investors
+      } else {
+        // Organization and Associate accounts
+        baseRoi = 1.0
+        effectiveRoi = formData.lock_type === "1_year" ? 6.0 : formData.lock_type === "10_year" ? 11.0 : 1.0
+        lcrBonus = formData.lock_type === "1_year" ? 5.0 : formData.lock_type === "10_year" ? 10.0 : 0
+      }
 
       // Create investment directly with all required fields
       const { data: investment, error: investmentError } = await supabase
@@ -180,9 +197,9 @@ function NewInvestmentContent() {
           principal: amount,
           amount: amount,
           lock_type: formData.lock_type,
-          base_roi: 1.0,
-          effective_roi: formData.lock_type === "1_year" ? 6.0 : formData.lock_type === "10_year" ? 11.0 : 1.0,
-          lcr_bonus: formData.lock_type === "1_year" ? 5.0 : formData.lock_type === "10_year" ? 10.0 : 0,
+          base_roi: baseRoi,
+          effective_roi: effectiveRoi,
+          lcr_bonus: lcrBonus,
           status: "pending",
           total_returns: 0,
           returns_start_at: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000).toISOString(),

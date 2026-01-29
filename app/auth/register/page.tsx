@@ -47,7 +47,8 @@ function RegisterForm() {
       if (formData.referralCode && formData.referralCode.length >= 3) {
         setVerifyingRef(true)
         try {
-          const referrer = await verifyReferralCode(formData.referralCode)
+          // Pass the intended account type for validation
+          const referrer = await verifyReferralCode(formData.referralCode, formData.baseStructure || undefined)
           if (referrer) {
             setReferrerName(referrer.full_name)
             setReferrerId(referrer.id)
@@ -69,7 +70,7 @@ function RegisterForm() {
 
     const timer = setTimeout(verifyRef, 500)
     return () => clearTimeout(timer)
-  }, [formData.referralCode])
+  }, [formData.referralCode, formData.baseStructure])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -305,7 +306,7 @@ function RegisterForm() {
                       Investor
                     </Label>
                     <p className="text-xs text-[#a8b2c1] mt-1">
-                      Personal investment account. Earn 7-8% PA based on tier. Referral optional.
+                      Personal investment account. Earn 7-8% PA based on tier. No referral system.
                     </p>
                   </div>
                 </div>
@@ -360,37 +361,46 @@ function RegisterForm() {
                 </div>
               </RadioGroup>
 
-              {/* Referral Code - Always visible but required for Associate */}
-              <div className="space-y-2 pt-2">
-                <Label htmlFor="referralCode" className="text-[#a8b2c1] flex items-center gap-2">
-                  <UserCheck className="w-4 h-4" />
-                  Referral Code {formData.baseStructure === "associate" ? "(Required)" : "(Optional)"}
-                </Label>
-                <Input
-                  id="referralCode"
-                  name="referralCode"
-                  placeholder="Enter referral code"
-                  value={formData.referralCode}
-                  onChange={handleChange}
-                  disabled={loading}
-                  className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all"
-                />
-                {verifyingRef && (
-                  <p className="text-xs text-[#5dade2] flex items-center gap-2">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Verifying code...
+              {/* Referral Code - Only show for Organization and Associate */}
+              {formData.baseStructure !== "investor" && (
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="referralCode" className="text-[#a8b2c1] flex items-center gap-2">
+                    <UserCheck className="w-4 h-4" />
+                    Referral Code {formData.baseStructure === "associate" ? "(Required)" : "(Optional)"}
+                  </Label>
+                  <Input
+                    id="referralCode"
+                    name="referralCode"
+                    placeholder="Enter referral code"
+                    value={formData.referralCode}
+                    onChange={handleChange}
+                    disabled={loading}
+                    className="bg-[#0a0e27] border-[#1e3a5f] text-white placeholder:text-[#2d3e52] focus:border-[#5dade2] focus:ring-[#5dade2] transition-all"
+                  />
+                  {verifyingRef && (
+                    <p className="text-xs text-[#5dade2] flex items-center gap-2">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Verifying code...
+                    </p>
+                  )}
+                  {!verifyingRef && referrerName && (
+                    <p className="text-xs text-green-400 flex items-center gap-2">
+                      <UserCheck className="w-3 h-3" />
+                      Referred by: {referrerName}
+                    </p>
+                  )}
+                  {!verifyingRef && formData.referralCode && !referrerName && (
+                    <p className="text-xs text-red-400">Invalid referral code</p>
+                  )}
+                </div>
+              )}
+              {formData.baseStructure === "investor" && (
+                <div className="p-3 bg-[#5dade2]/10 rounded-lg border border-[#5dade2]/30">
+                  <p className="text-xs text-[#a8b2c1]">
+                    Investor accounts do not use referral codes. Register directly and start investing.
                   </p>
-                )}
-                {!verifyingRef && referrerName && (
-                  <p className="text-xs text-green-400 flex items-center gap-2">
-                    <UserCheck className="w-3 h-3" />
-                    Referred by: {referrerName}
-                  </p>
-                )}
-                {!verifyingRef && formData.referralCode && !referrerName && (
-                  <p className="text-xs text-red-400">Invalid referral code</p>
-                )}
-              </div>
+                </div>
+              )}
 
               <Button
                 type="button"
@@ -440,7 +450,7 @@ function RegisterForm() {
                 </Button>
               </div>
 
-              {referrerName && (
+              {referrerName && formData.baseStructure !== "investor" && (
                 <div className="flex items-center gap-2 p-2 bg-green-900/20 rounded-lg border border-green-600/30">
                   <UserCheck className="w-4 h-4 text-green-400" />
                   <span className="text-sm text-green-400">Referred by: {referrerName}</span>

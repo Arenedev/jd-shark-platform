@@ -63,7 +63,7 @@ export default function ReferralsPage() {
           <p className="text-muted-foreground">
             {profile?.base_structure === "organization"
               ? "Earn 1% commission on your direct referrals' investment returns"
-              : "Direct referral system available for Organization accounts"}
+              : "Referral system is not available for your account type"}
           </p>
         </div>
 
@@ -168,9 +168,9 @@ export default function ReferralsPage() {
           <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
-                <h2 className="text-xl font-semibold text-foreground">Direct Referral System</h2>
+                <h2 className="text-xl font-semibold text-foreground">Referral System Not Available</h2>
                 <p className="text-muted-foreground">
-                  The direct referral system with 1% commission on investment returns is only available for Organization accounts. Please upgrade your account to access this feature.
+                  The referral system is only available for Organization accounts. Your account type ({profile?.base_structure}) does not have access to this feature.
                 </p>
               </div>
             </CardContent>
