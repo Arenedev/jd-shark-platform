@@ -16,8 +16,18 @@ export async function POST(request: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ message: "Server configuration error" }, { status: 500 })
+    console.log("[v0] API: Checking environment variables...")
+    console.log("[v0] API: SUPABASE_URL exists:", !!supabaseUrl)
+    console.log("[v0] API: SERVICE_ROLE_KEY exists:", !!supabaseServiceKey)
+
+    if (!supabaseUrl) {
+      console.error("[v0] API: Missing NEXT_PUBLIC_SUPABASE_URL")
+      return NextResponse.json({ message: "Server configuration error: Missing Supabase URL" }, { status: 500 })
+    }
+
+    if (!supabaseServiceKey) {
+      console.error("[v0] API: Missing SUPABASE_SERVICE_ROLE_KEY")
+      return NextResponse.json({ message: "Server configuration error: Missing service role key. Contact admin." }, { status: 500 })
     }
 
     const supabase = createServiceClient(supabaseUrl, supabaseServiceKey)
