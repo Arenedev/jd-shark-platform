@@ -14,15 +14,42 @@ export interface UserBalances {
 export async function getUserBalances(userId: string): Promise<UserBalances> {
   const supabase = createClient()
 
-  // Get PC from approved investments
+  // Get PC from investments - query through portfolio to get user's investments
+  // Investments have portfolio_id, and portfolios have current_owner_id (which is the user_id)
+  // Since some investments may not have user_id set, we query through the portfolio relationship
   const { data: investments, error: investError } = await supabase
     .from("investments")
-    .select("principal, status")
-    .eq("user_id", userId)
-    .eq("status", "active")
+    .select(
+      `
+      id,
+      principal, 
+      amount, 
+      status,
+      user_id,
+      portfolio_id,
+      portfolios!inner(current_owner_id)
+    `
+    )
+    .eq("portfolios.current_owner_id", userId)
+    .in("status", ["approved", "active", "matured", "pending"])
 
-  const personalCapital = investments?.reduce((sum, inv) => sum + (inv.principal || 0), 0) || 0
-  const lockedCapital = personalCapital // In Phase 2, all PC is locked
+  console.log("[v0] Investments fetched for user:", userId, "count:", investments?.length, "data:", investments)
+
+  // PC = sum of principal amounts (actual invested - not reduced by fees)
+  // Use principal field as it's the true invested amount, fall back to amount
+  const personalCapital = investments?.reduce((sum, inv) => sum + (inv.principal || inv.amount || 0), 0) || 0
+
+  // Get locked capital (principal in active investments)
+  const lockedCapital = investments
+    ?.filter((inv) => inv.status === "active")
+    .reduce((sum, inv) => sum + (inv.principal || inv.amount || 0), 0) || 0
+
+  console.log("[v0] PC calculation from investments:", {
+    personalCapital,
+    lockedCapital,
+    investmentCount: investments?.length,
+    statuses: investments?.map((i) => i.status),
+  })
 
   // Get total returns earned
   const { data: returns, error: returnsError } = await supabase
@@ -56,6 +83,8 @@ export async function getUserBalances(userId: string): Promise<UserBalances> {
 
   const walletBalance = wallet?.balance || 0
   const availableForWithdrawal = returnsBalance - pendingWithdrawals
+
+  console.log("[v0] Balance calculation final:", { personalCapital, lockedCapital, totalReturnsEarned, returnsBalance })
 
   return {
     userId,

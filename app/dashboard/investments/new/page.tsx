@@ -171,12 +171,14 @@ function NewInvestmentContent() {
 
       console.log("[v0] Creating investment for user:", userId, "amount:", amount, "lock_type:", formData.lock_type)
 
-      // Create investment directly
+      // Create investment directly with all required fields
       const { data: investment, error: investmentError } = await supabase
         .from("investments")
         .insert({
+          portfolio_id: formData.portfolio_id,
           user_id: userId,
           principal: amount,
+          amount: amount,
           lock_type: formData.lock_type,
           base_roi: 1.0,
           effective_roi: formData.lock_type === "1_year" ? 6.0 : formData.lock_type === "10_year" ? 11.0 : 1.0,

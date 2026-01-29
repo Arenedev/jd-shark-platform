@@ -498,35 +498,6 @@ export default function SettingsPage() {
         </Card>
 
         {/* Notification Preferences */}
-        <Card className="animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-          <CardHeader>
-            <CardTitle>Notification Preferences</CardTitle>
-            <CardDescription>Choose how you want to be notified</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-border">
-              <div>
-                <p className="font-medium text-foreground">Email Notifications</p>
-                <p className="text-sm text-muted-foreground">Receive updates via email</p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-4 h-4 cursor-pointer" />
-            </div>
-            <div className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-border">
-              <div>
-                <p className="font-medium text-foreground">SMS Alerts</p>
-                <p className="text-sm text-muted-foreground">Get important alerts via SMS</p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-4 h-4 cursor-pointer" />
-            </div>
-            <div className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-border">
-              <div>
-                <p className="font-medium text-foreground">Transaction Notifications</p>
-                <p className="text-sm text-muted-foreground">Alert on all transactions</p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-4 h-4 cursor-pointer" />
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   )
