@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.loan_repayment_requests (
   principal_amount DECIMAL(15,2) NOT NULL,
   interest_accrued DECIMAL(15,2) NOT NULL,
   total_repayment_amount DECIMAL(15,2) NOT NULL,
+  payment_proof_url TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'completed', 'rejected')),
   requested_at TIMESTAMPTZ DEFAULT NOW(),
   approved_at TIMESTAMPTZ,

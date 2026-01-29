@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     try {
       const buffer = await file.arrayBuffer()
       const blob = await put(`loan-repayments/${loanId}/${Date.now()}-${file.name}`, buffer, {
-        access: "private",
+        access: "public",
       })
       proofUrl = blob.url
       console.log("[v0] Payment proof uploaded:", proofUrl)
@@ -40,12 +40,12 @@ export async function POST(request: NextRequest) {
       .insert({
         loan_id: loanId,
         user_id: userId,
-        amount: Number.parseFloat(amount),
         principal_amount: Number.parseFloat(principalAmount),
         interest_accrued: Number.parseFloat(interestAccrued),
+        total_repayment_amount: Number.parseFloat(amount),
         payment_proof_url: proofUrl,
         status: "pending",
-        created_at: new Date().toISOString(),
+        requested_at: new Date().toISOString(),
       })
       .select()
       .single()
