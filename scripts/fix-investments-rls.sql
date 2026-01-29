@@ -14,10 +14,10 @@ USING (
   -- Allow if user owns the portfolio
   portfolio_id IN (
     SELECT id FROM portfolios 
-    WHERE current_owner_id = auth.uid()::text
+    WHERE current_owner_id = auth.uid()
   )
   -- OR allow if user_id matches (for backward compatibility)
-  OR user_id = auth.uid()::text
+  OR user_id = auth.uid()
 );
 
 -- Allow users to create investments in their portfolios
@@ -26,7 +26,7 @@ ON investments FOR INSERT
 WITH CHECK (
   portfolio_id IN (
     SELECT id FROM portfolios 
-    WHERE current_owner_id = auth.uid()::text
+    WHERE current_owner_id = auth.uid()
   )
 );
 
@@ -36,13 +36,13 @@ ON investments FOR UPDATE
 USING (
   portfolio_id IN (
     SELECT id FROM portfolios 
-    WHERE current_owner_id = auth.uid()::text
+    WHERE current_owner_id = auth.uid()
   )
 )
 WITH CHECK (
   portfolio_id IN (
     SELECT id FROM portfolios 
-    WHERE current_owner_id = auth.uid()::text
+    WHERE current_owner_id = auth.uid()
   )
 );
 
@@ -52,6 +52,6 @@ ON investments FOR DELETE
 USING (
   portfolio_id IN (
     SELECT id FROM portfolios 
-    WHERE current_owner_id = auth.uid()::text
+    WHERE current_owner_id = auth.uid()
   )
 );
