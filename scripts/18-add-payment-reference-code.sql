@@ -12,6 +12,11 @@ DROP COLUMN IF EXISTS payment_proof_url;
 ALTER TABLE public.loan_repayment_requests
 DROP COLUMN IF EXISTS payment_reference;
 
--- Add constraint to payment_reference_code if not already present
+-- Generate payment_reference_code for existing null rows
+UPDATE public.loan_repayment_requests
+SET payment_reference_code = 'JDS-' || to_char(now(), 'YYYYMMDDHH24MISS') || '-' || substr(md5(random()::text), 1, 6)
+WHERE payment_reference_code IS NULL;
+
+-- Add constraint to payment_reference_code
 ALTER TABLE public.loan_repayment_requests
 ALTER COLUMN payment_reference_code SET NOT NULL;
