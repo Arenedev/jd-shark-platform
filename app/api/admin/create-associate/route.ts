@@ -1,32 +1,39 @@
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
-import * as bcrypt from "bcrypt"
 
 export async function POST(request: NextRequest) {
   try {
-    // Use service role client for admin operations
-    const supabase = createServiceRoleClient()
-    const supabaseUser = await createClient()
+    const supabase = await createClient()
+    const supabaseServiceRole = createServiceRoleClient()
 
-    // Verify admin user from cookies
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseUser.auth.getUser()
-    
-    if (authError || !user) {
-      console.error("[v0] Admin auth error:", authError)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Try to get the authenticated user
+    let user = null
+    try {
+      const { data } = await supabase.auth.getUser()
+      user = data?.user
+    } catch (err) {
+      console.error("[v0] Could not get user from session:", err)
+    }
+
+    if (!user) {
+      console.error("[v0] Admin auth error: No authenticated user")
+      return NextResponse.json({ error: "Unauthorized - please log in" }, { status: 401 })
     }
 
     // Check if user is admin
-    const { data: adminProfile } = await supabaseUser
+    const { data: adminProfile, error: profileError } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("id", user.id)
       .single()
 
+    if (profileError) {
+      console.error("[v0] Error fetching admin profile:", profileError)
+      return NextResponse.json({ error: "Could not verify admin status" }, { status: 403 })
+    }
+
     if (!adminProfile || adminProfile.role !== "admin") {
+      console.error("[v0] User is not an admin:", user.id)
       return NextResponse.json({ error: "Only admins can create associates" }, { status: 403 })
     }
 
@@ -41,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create auth user using service role
-    const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
+    const { data: authData, error: signUpError } = await supabaseServiceRole.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
@@ -49,11 +56,11 @@ export async function POST(request: NextRequest) {
 
     if (signUpError || !authData?.user) {
       console.error("[v0] Error creating auth user:", signUpError)
-      return NextResponse.json({ error: "Failed to create user account" }, { status: 400 })
+      return NextResponse.json({ error: signUpError?.message || "Failed to create user account" }, { status: 400 })
     }
 
-    // Create profile
-    const { data: profile, error: profileError } = await supabase
+    // Create profile using service role
+    const { data: profile, error: profileCreateError } = await supabaseServiceRole
       .from("profiles")
       .insert({
         id: authData.user.id,
@@ -67,15 +74,15 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    if (profileError) {
-      console.error("[v0] Error creating profile:", profileError)
+    if (profileCreateError) {
+      console.error("[v0] Error creating profile:", profileCreateError)
       // Clean up auth user if profile creation fails
-      await supabase.auth.admin.deleteUser(authData.user.id)
+      await supabaseServiceRole.auth.admin.deleteUser(authData.user.id)
       return NextResponse.json({ error: "Failed to create user profile" }, { status: 400 })
     }
 
-    // Create wallet
-    const { error: walletError } = await supabase.from("wallets").insert({
+    // Create wallet using service role
+    const { error: walletError } = await supabaseServiceRole.from("wallets").insert({
       user_id: authData.user.id,
       balance: 0,
       returns_balance: 0,
@@ -85,7 +92,7 @@ export async function POST(request: NextRequest) {
       console.error("[v0] Error creating wallet:", walletError)
     }
 
-    console.log("[v0] Associate account created:", authData.user.id, fullName)
+    console.log("[v0] Associate account created successfully:", authData.user.id, fullName)
 
     return NextResponse.json(
       {
@@ -103,6 +110,9 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     console.error("[v0] Admin create associate error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 }
+    )
   }
 }
