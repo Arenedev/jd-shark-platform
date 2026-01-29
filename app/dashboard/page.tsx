@@ -102,7 +102,7 @@ export default function DashboardPage() {
           <p className="text-sm sm:text-base text-muted-foreground">Welcome back, {profile.full_name}</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="pb-2 sm:pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Account Type</CardTitle>
@@ -127,22 +127,21 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Current Rank</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Personal Capital (PC)</CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant="secondary" className="text-sm sm:text-lg capitalize">
-                {profile.current_rank?.replace(/_/g, " ") || "Unranked"}
-              </Badge>
+              <div className="text-xl sm:text-2xl font-bold">₦{(balances?.personalCapital || 0).toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-1">Invested</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Personal Capital</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Balance</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold">₦{(balances?.personalCapital || 0).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-1">Locked</p>
+              <div className="text-xl sm:text-2xl font-bold">₦{(balances?.availableForWithdrawal || 0).toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-1">Withdrawable</p>
             </CardContent>
           </Card>
 
@@ -154,7 +153,7 @@ export default function DashboardPage() {
               <div className="text-xl sm:text-2xl font-bold text-green-600">
                 ₦{(balances?.returnsBalance || 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Withdrawable</p>
+              <p className="text-xs text-muted-foreground mt-1">Earned</p>
             </CardContent>
           </Card>
 
@@ -167,18 +166,6 @@ export default function DashboardPage() {
                 ₦{(balances?.totalReturnsEarned || 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Lifetime</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Available</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-blue-600">
-                ₦{(balances?.availableForWithdrawal || 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">To withdraw</p>
             </CardContent>
           </Card>
         </div>

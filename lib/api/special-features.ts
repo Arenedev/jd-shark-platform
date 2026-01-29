@@ -42,7 +42,7 @@ export interface Incentive {
 export async function checkLoanEligibility(userId: string) {
   const supabase = createClient()
 
-  // First, check if user is an organization
+  // Check user profile to get Personal Capital (PC)
   const { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .select("base_structure, personal_capital")
@@ -56,15 +56,18 @@ export async function checkLoanEligibility(userId: string) {
 
   console.log("[v0] User profile:", { base_structure: profileData?.base_structure, personal_capital: profileData?.personal_capital })
 
+  // Only organizations can take loans
   if (profileData?.base_structure !== "organization") {
     console.log("[v0] User is not an organization:", profileData?.base_structure)
     return { eligible: false, max_loan_amount: 0, investment_portfolio_value: 0 }
   }
 
+  // Use Personal Capital (PC) to determine loan eligibility
+  // Loan amount cannot exceed 80% of PC
   const portfolio_value = profileData?.personal_capital || 0
   const max_loan_amount = portfolio_value * 0.8
 
-  console.log("[v0] Loan eligibility calculated:", { eligible: true, max_loan_amount, portfolio_value })
+  console.log("[v0] Loan eligibility calculated using PC:", { eligible: true, max_loan_amount, portfolio_value })
 
   return { eligible: true, max_loan_amount, investment_portfolio_value: portfolio_value }
 }
