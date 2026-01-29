@@ -18,6 +18,7 @@ interface LoanRepaymentRequest {
   principal_amount: number
   interest_accrued: number
   total_repayment_amount: number
+  payment_reference_code: string
   status: string
   created_at: string
   requested_at: string
@@ -245,6 +246,24 @@ export default function AdminRepaymentsPage() {
                             <span className="text-muted-foreground">Account Number:</span>
                             <p className="font-medium">{repayment.profiles.account_number || "N/A"}</p>
                           </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Payment Reference Code */}
+                    {repayment.payment_reference_code && (
+                      <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-md border border-blue-200 dark:border-blue-900">
+                        <p className="text-xs text-muted-foreground mb-2">Payment Reference Code (for transaction description):</p>
+                        <div className="flex items-center justify-between">
+                          <code className="text-sm font-mono font-bold text-blue-700 dark:text-blue-300">{repayment.payment_reference_code}</code>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(repayment.payment_reference_code)
+                            }}
+                            className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          >
+                            Copy
+                          </button>
                         </div>
                       </div>
                     )}
