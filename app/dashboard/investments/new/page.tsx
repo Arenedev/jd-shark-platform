@@ -1,18 +1,22 @@
-"use client"
+'use client';
 
-import type React from "react"
-import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import DashboardLayout from "@/components/dashboard/layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Spinner } from "@/components/ui/spinner"
-import { createClient } from "@/lib/supabase/client"
-import { useUserProfile } from "@/hooks/use-user-profile"
-import { Loader2 } from "lucide-react"
+import { AlertDescription } from "@/components/ui/alert"
+import { Alert } from "@/components/ui/alert"
+import { CardContent } from "@/components/ui/card"
+import { CardTitle } from "@/components/ui/card"
+import { CardHeader } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
+import { useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useUserProfile } from "@/hooks/useUserProfile" // Import useUserProfile hook
+import { createClient } from "@/utils/supabaseClient" // Import createClient function
+import DashboardLayout from "@/layouts/DashboardLayout" // Import DashboardLayout component
+import Loader2 from "@/components/ui/loader2" // Import Loader2 component
 
 function NewInvestmentContent() {
   const router = useRouter()
