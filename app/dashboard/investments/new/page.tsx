@@ -1,5 +1,7 @@
 'use client';
 
+import React from "react"
+
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,10 +15,9 @@ import { Card } from "@/components/ui/card"
 import { useSearchParams } from "next/navigation"
 import { useRouter } from "next/navigation"
 import { useState, useEffect, Suspense } from "react"
-import { useUserProfile } from "@/hooks/useUserProfile" // Import useUserProfile hook
-import { createClient } from "@/utils/supabaseClient" // Import createClient function
-import DashboardLayout from "@/layouts/DashboardLayout" // Import DashboardLayout component
-import Loader2 from "@/components/ui/loader2" // Import Loader2 component
+import { useUserProfile } from "@/hooks/use-user-profile"
+import { createClient } from "@/lib/supabase/client"
+import { Loader2 } from "lucide-react"
 
 function NewInvestmentContent() {
   const router = useRouter()
@@ -83,8 +84,13 @@ function NewInvestmentContent() {
 
         if (portfoliosError) {
           console.error("[v0] New investment: Portfolios fetch error:", portfoliosError)
+          setError(`Error loading portfolios: ${portfoliosError.message}`)
         } else {
           console.log("[v0] New investment: Portfolios loaded:", portfoliosData?.length)
+          if (!portfoliosData || portfoliosData.length === 0) {
+            console.warn("[v0] New investment: No portfolios found for user:", user.id)
+            setError("No portfolios found. Please create a portfolio first.")
+          }
           setPortfolios(portfoliosData || [])
         }
         setPortfoliosLoading(false)
