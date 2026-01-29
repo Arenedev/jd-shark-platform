@@ -14,25 +14,24 @@ export interface UserBalances {
 export async function getUserBalances(userId: string): Promise<UserBalances> {
   const supabase = createClient()
 
-  // Get PC directly from profiles table (total invested amount)
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("personal_capital")
-    .eq("id", userId)
-    .single()
-
-  const personalCapital = profile?.personal_capital || 0
-
-  // Get locked capital (principal in active investments)
+  // Get PC from investments table - sum of all approved and active investment amounts (total invested)
   const { data: investments, error: investError } = await supabase
     .from("investments")
-    .select("principal, status")
+    .select("amount, principal, status")
     .eq("user_id", userId)
     .in("status", ["approved", "active", "matured"])
 
+  console.log("[v0] Investments fetched:", investments?.length, investments)
+
+  // PC = sum of investment amounts (actual invested across all portfolios)
+  const personalCapital = investments?.reduce((sum, inv) => sum + (inv.amount || 0), 0) || 0
+
+  // Get locked capital (principal in active investments)
   const lockedCapital = investments
     ?.filter((inv) => inv.status === "active")
-    .reduce((sum, inv) => sum + (inv.principal || 0), 0) || 0
+    .reduce((sum, inv) => sum + (inv.principal || inv.amount || 0), 0) || 0
+
+  console.log("[v0] PC calculation from investments:", { personalCapital, lockedCapital })
 
   // Get total returns earned
   const { data: returns, error: returnsError } = await supabase
