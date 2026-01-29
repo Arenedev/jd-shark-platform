@@ -18,6 +18,7 @@ import { useState, useEffect, Suspense } from "react"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2 } from "lucide-react"
+import DashboardLayout from "@/components/dashboard/layout"
 
 function NewInvestmentContent() {
   const router = useRouter()
@@ -260,14 +261,17 @@ function NewInvestmentContent() {
 
   if (loading || portfoliosLoading || walletLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <DashboardLayout profile={profile}>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <DashboardLayout profile={profile}>
+      <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Create Investment</h1>
           <p className="text-muted-foreground">Start your investment journey with a new portfolio</p>
@@ -415,7 +419,8 @@ function NewInvestmentContent() {
           </CardContent>
         </Card>
       </div>
-    )
+    </DashboardLayout>
+  )
   }
 }
 
