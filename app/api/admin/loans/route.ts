@@ -12,17 +12,23 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (!user) {
+      console.error("[v0] No user found in auth")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    console.log("[v0] Checking admin status for user:", user.id)
+
     // Check if user is admin
-    const { data: adminProfile } = await supabase
+    const { data: adminProfile, error: adminError } = await supabase
       .from("admin_users")
       .select("id")
       .eq("user_id", user.id)
       .single()
 
-    if (!adminProfile) {
+    console.log("[v0] Admin check result:", { adminProfile, adminError: adminError?.message })
+
+    if (adminError || !adminProfile) {
+      console.log("[v0] User is not an admin")
       return NextResponse.json({ error: "Not an admin" }, { status: 403 })
     }
 
@@ -54,14 +60,14 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("[v0] Loans fetch error:", error)
+      console.error("[v0] Loans fetch error:", error.message)
       throw error
     }
 
     console.log("[v0] Fetched loans:", loans?.length || 0)
     return NextResponse.json({ loans: loans || [] })
   } catch (error: any) {
-    console.error("[v0] Admin loans API error:", error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error("[v0] Admin loans API error:", error.message || error)
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }
