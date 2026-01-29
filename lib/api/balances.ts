@@ -14,14 +14,22 @@ export interface UserBalances {
 export async function getUserBalances(userId: string): Promise<UserBalances> {
   const supabase = createClient()
 
-  // Get PC from all investments (approved + active - not withdrawn)
+  // Get PC directly from profiles table (total invested amount)
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("personal_capital")
+    .eq("id", userId)
+    .single()
+
+  const personalCapital = profile?.personal_capital || 0
+
+  // Get locked capital (principal in active investments)
   const { data: investments, error: investError } = await supabase
     .from("investments")
     .select("principal, status")
     .eq("user_id", userId)
     .in("status", ["approved", "active", "matured"])
 
-  const personalCapital = investments?.reduce((sum, inv) => sum + (inv.principal || 0), 0) || 0
   const lockedCapital = investments
     ?.filter((inv) => inv.status === "active")
     .reduce((sum, inv) => sum + (inv.principal || 0), 0) || 0
@@ -58,6 +66,8 @@ export async function getUserBalances(userId: string): Promise<UserBalances> {
 
   const walletBalance = wallet?.balance || 0
   const availableForWithdrawal = returnsBalance - pendingWithdrawals
+
+  console.log("[v0] Balance calculation:", { personalCapital, lockedCapital, totalReturnsEarned, returnsBalance })
 
   return {
     userId,
