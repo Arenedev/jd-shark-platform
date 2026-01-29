@@ -1,22 +1,26 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import * as bcrypt from "bcrypt"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    // Use service role client for admin operations
+    const supabase = createServiceRoleClient()
+    const supabaseUser = await createClient()
 
-    // Verify admin user
+    // Verify admin user from cookies
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser()
+    } = await supabaseUser.auth.getUser()
+    
     if (authError || !user) {
+      console.error("[v0] Admin auth error:", authError)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin (you can add role checking here)
-    const { data: adminProfile } = await supabase
+    // Check if user is admin
+    const { data: adminProfile } = await supabaseUser
       .from("profiles")
       .select("id, role")
       .eq("id", user.id)
@@ -36,17 +40,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
-
-    // Create auth user
+    // Create auth user using service role
     const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
     })
 
-    if (signUpError || !authData.user) {
+    if (signUpError || !authData?.user) {
       console.error("[v0] Error creating auth user:", signUpError)
       return NextResponse.json({ error: "Failed to create user account" }, { status: 400 })
     }
