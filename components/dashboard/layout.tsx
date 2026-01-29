@@ -76,6 +76,14 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             <NavLink href="/dashboard/referrals" label="Referrals" icon="👥" isActive={pathname.includes("/referrals")} />
           )}
           <NavLink href="/dashboard/settings" label="Settings" icon="⚙️" isActive={pathname.includes("/settings")} />
+          {profile?.role === "admin" && (
+            <NavLink
+              href="/dashboard/admin/create-associate"
+              label="Create Associate"
+              icon="👤"
+              isActive={pathname.includes("/admin")}
+            />
+          )}
         </nav>
 
         <div className="absolute bottom-6 left-6 right-6">
@@ -172,6 +180,15 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               isActive={pathname.includes("/settings")}
               onClick={() => setMobileMenuOpen(false)}
             />
+            {profile?.role === "admin" && (
+              <NavLink
+                href="/dashboard/admin/create-associate"
+                label="Create Associate"
+                icon="👤"
+                isActive={pathname.includes("/admin")}
+                onClick={() => setMobileMenuOpen(false)}
+              />
+            )}
             <Button
               onClick={() => {
                 handleLogout()
