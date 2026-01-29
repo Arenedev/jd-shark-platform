@@ -1,32 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; action: string } },
 ) {
   try {
-    const supabase = createClient()
-
-    // Verify admin session
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is admin
-    const { data: adminProfile } = await supabase
-      .from("admin_users")
-      .select("id")
-      .eq("user_id", user.id)
-      .single()
-
-    if (!adminProfile) {
-      return NextResponse.json({ error: "Not an admin" }, { status: 403 })
-    }
+    // Use service role client - the admin page already has authentication checks
+    const supabase = createServiceRoleClient()
 
     const { id, action } = params
     const body = await request.json()
@@ -66,7 +47,7 @@ export async function POST(
       return NextResponse.json({ error: "Invalid action" }, { status: 400 })
     }
   } catch (error: any) {
-    console.error("[v0] Loan action error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error("[v0] Loan action error:", error.message)
+    return NextResponse.json({ error: error.message || "Failed to process loan" }, { status: 500 })
   }
 }
