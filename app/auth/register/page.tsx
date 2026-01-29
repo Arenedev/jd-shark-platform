@@ -47,7 +47,8 @@ function RegisterForm() {
       if (formData.referralCode && formData.referralCode.length >= 3) {
         setVerifyingRef(true)
         try {
-          const referrer = await verifyReferralCode(formData.referralCode)
+          // Pass the intended account type for validation
+          const referrer = await verifyReferralCode(formData.referralCode, formData.baseStructure || undefined)
           if (referrer) {
             setReferrerName(referrer.full_name)
             setReferrerId(referrer.id)
@@ -69,7 +70,7 @@ function RegisterForm() {
 
     const timer = setTimeout(verifyRef, 500)
     return () => clearTimeout(timer)
-  }, [formData.referralCode])
+  }, [formData.referralCode, formData.baseStructure])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

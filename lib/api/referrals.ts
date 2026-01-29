@@ -85,13 +85,13 @@ export async function getReferralStats(userId: string) {
   }
 }
 
-export async function verifyReferralCode(code: string) {
+export async function verifyReferralCode(code: string, intendedAccountType?: string) {
   const supabase = createBrowserClient()
 
-  console.log("[v0] Verifying referral code:", code)
+  console.log("[v0] Verifying referral code:", code, "for account type:", intendedAccountType)
 
   // Fetch all profiles and filter client-side since Supabase doesn't support ::text casting in queries
-  const { data, error } = await supabase.from("profiles").select("id, full_name, username")
+  const { data, error } = await supabase.from("profiles").select("id, full_name, username, base_structure")
 
   if (error) {
     console.error("[v0] Referral code verification error:", error)
@@ -110,6 +110,20 @@ export async function verifyReferralCode(code: string) {
   if (!matchedProfile) {
     console.log("[v0] No profile found with referral code:", code)
     return null
+  }
+
+  // If intended account type is specified, validate that the referrer can create that type
+  if (intendedAccountType) {
+    // Organization codes can only create other organizations
+    if (intendedAccountType === "organization" && matchedProfile.base_structure !== "organization") {
+      console.log("[v0] Invalid referrer - only organizations can refer new organizations")
+      return null
+    }
+    // Associates can only be referred by other associates
+    if (intendedAccountType === "associate" && matchedProfile.base_structure !== "associate") {
+      console.log("[v0] Invalid referrer - only associates can refer new associates")
+      return null
+    }
   }
 
   console.log("[v0] Referral code verified:", matchedProfile.full_name)
