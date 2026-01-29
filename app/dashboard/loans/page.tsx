@@ -269,37 +269,35 @@ export default function LoansPage() {
                     </span>
                   </div>
 
-                  {loan.status === "active" && (
+                  {(loan.status === "active" || loan.status === "approved") && (
                     <div className="pt-2 border-t space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Amount Paid</span>
-                        <span className="font-medium">{formatCurrency(loan.repaid_amount)}</span>
+                        <span className="font-medium">{formatCurrency(loan.repaid_amount || 0)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Balance</span>
                         <span className="font-medium">{formatCurrency(loan.total_due - (loan.repaid_amount || 0))}</span>
                       </div>
 
-                      {/* Bank Account Details for Repayment */}
-                      {loan.profiles && (
-                        <div className="bg-accent/5 p-3 rounded-md space-y-2 text-sm">
-                          <p className="font-semibold text-foreground">JDShark Repayment Account</p>
-                          <div className="space-y-1">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Account Name:</span>
-                              <span className="font-medium">{loan.profiles.account_name || "Not provided"}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Bank Name:</span>
-                              <span className="font-medium">{loan.profiles.bank_name || "Not provided"}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Account Number:</span>
-                              <span className="font-medium">{loan.profiles.account_number || "Not provided"}</span>
-                            </div>
+                      {/* Bank Account Details for Repayment - Fetch from profiles or show JDShark account */}
+                      <div className="bg-accent/5 p-3 rounded-md space-y-2 text-sm">
+                        <p className="font-semibold text-foreground">JDShark Repayment Account</p>
+                        <div className="space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Account Name:</span>
+                            <span className="font-medium">{loan.profiles?.account_name || "JDShark Investment Ltd"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Bank Name:</span>
+                            <span className="font-medium">{loan.profiles?.bank_name || "Contact Support"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Account Number:</span>
+                            <span className="font-medium">{loan.profiles?.account_number || "Contact Support"}</span>
                           </div>
                         </div>
-                      )}
+                      </div>
 
                       <Button 
                         variant="default" 
@@ -307,7 +305,7 @@ export default function LoansPage() {
                         className="w-full mt-2"
                         onClick={() => handleRepaymentClick(loan)}
                       >
-                        Repay Loan
+                        Submit Repayment Request
                       </Button>
                     </div>
                   )}
