@@ -114,6 +114,11 @@ export async function verifyReferralCode(code: string, intendedAccountType?: str
 
   // If intended account type is specified, validate that the referrer can create that type
   if (intendedAccountType) {
+    // Investor accounts CANNOT use referral codes - no referral system for investors
+    if (intendedAccountType === "investor") {
+      console.log("[v0] Invalid - investors cannot use referral codes")
+      return null
+    }
     // Organization codes can only create other organizations
     if (intendedAccountType === "organization" && matchedProfile.base_structure !== "organization") {
       console.log("[v0] Invalid referrer - only organizations can refer new organizations")
