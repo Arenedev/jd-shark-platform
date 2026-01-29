@@ -1,5 +1,7 @@
 'use client';
 
+import React from "react"
+
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -83,8 +85,13 @@ function NewInvestmentContent() {
 
         if (portfoliosError) {
           console.error("[v0] New investment: Portfolios fetch error:", portfoliosError)
+          setError(`Error loading portfolios: ${portfoliosError.message}`)
         } else {
           console.log("[v0] New investment: Portfolios loaded:", portfoliosData?.length)
+          if (!portfoliosData || portfoliosData.length === 0) {
+            console.warn("[v0] New investment: No portfolios found for user:", user.id)
+            setError("No portfolios found. Please create a portfolio first.")
+          }
           setPortfolios(portfoliosData || [])
         }
         setPortfoliosLoading(false)
