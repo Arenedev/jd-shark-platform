@@ -1,44 +1,14 @@
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const supabaseServiceRole = createServiceRoleClient()
-
-    // Try to get the authenticated user
-    let user = null
-    try {
-      const { data } = await supabase.auth.getUser()
-      user = data?.user
-    } catch (err) {
-      console.error("[v0] Could not get user from session:", err)
-    }
-
-    if (!user) {
-      console.error("[v0] Admin auth error: No authenticated user")
-      return NextResponse.json({ error: "Unauthorized - please log in" }, { status: 401 })
-    }
-
-    // Check if user is admin
-    const { data: adminProfile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("id", user.id)
-      .single()
-
-    if (profileError) {
-      console.error("[v0] Error fetching admin profile:", profileError)
-      return NextResponse.json({ error: "Could not verify admin status" }, { status: 403 })
-    }
-
-    if (!adminProfile || adminProfile.role !== "admin") {
-      console.error("[v0] User is not an admin:", user.id)
-      return NextResponse.json({ error: "Only admins can create associates" }, { status: 403 })
-    }
 
     const body = await request.json()
     const { email, password, fullName, phone } = body
+
+    console.log("[v0] Creating associate for:", fullName, email)
 
     if (!email || !password || !fullName) {
       return NextResponse.json(
@@ -59,6 +29,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: signUpError?.message || "Failed to create user account" }, { status: 400 })
     }
 
+    console.log("[v0] Auth user created:", authData.user.id)
+
     // Create profile using service role
     const { data: profile, error: profileCreateError } = await supabaseServiceRole
       .from("profiles")
@@ -78,8 +50,10 @@ export async function POST(request: NextRequest) {
       console.error("[v0] Error creating profile:", profileCreateError)
       // Clean up auth user if profile creation fails
       await supabaseServiceRole.auth.admin.deleteUser(authData.user.id)
-      return NextResponse.json({ error: "Failed to create user profile" }, { status: 400 })
+      return NextResponse.json({ error: "Failed to create user profile: " + profileCreateError.message }, { status: 400 })
     }
+
+    console.log("[v0] Profile created:", profile)
 
     // Create wallet using service role
     const { error: walletError } = await supabaseServiceRole.from("wallets").insert({
@@ -90,6 +64,8 @@ export async function POST(request: NextRequest) {
 
     if (walletError) {
       console.error("[v0] Error creating wallet:", walletError)
+    } else {
+      console.log("[v0] Wallet created for:", authData.user.id)
     }
 
     console.log("[v0] Associate account created successfully:", authData.user.id, fullName)
