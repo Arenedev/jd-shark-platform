@@ -66,16 +66,21 @@ export default function DashboardPage() {
     const loadBalances = async () => {
       if (userId) {
         try {
+          console.log("[v0] Dashboard: Loading balances for user:", userId)
           const userBalances = await getUserBalances(userId)
+          console.log("[v0] Dashboard: Balances loaded:", userBalances)
           setBalances(userBalances)
         } catch (error) {
-          console.error("[v0] Error loading balances:", error)
+          console.error("[v0] Dashboard: Error loading balances:", error)
         }
       }
     }
 
     if (userId) {
       loadBalances()
+      // Refresh balances every 10 seconds
+      const interval = setInterval(loadBalances, 10000)
+      return () => clearInterval(interval)
     }
   }, [userId])
 
