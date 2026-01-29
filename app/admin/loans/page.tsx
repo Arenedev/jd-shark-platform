@@ -61,16 +61,19 @@ export default function AdminLoansPage() {
       console.log("[v0] Fetching admin loans data...")
       const response = await fetch("/api/admin/loans")
 
-      if (!response.ok) throw new Error("Failed to fetch data")
-
       const data = await response.json()
-      console.log("[v0] Loans data received:", data)
+      console.log("[v0] API response:", { status: response.status, data })
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to fetch data (status: ${response.status})`)
+      }
 
       const loansData = data.loans || []
+      console.log("[v0] Loans data received:", loansData.length)
       setLoans(loansData)
       setFilteredLoans(loansData)
-    } catch (error) {
-      console.error("[v0] Error fetching loans:", error)
+    } catch (error: any) {
+      console.error("[v0] Error fetching loans:", error.message)
       setLoans([])
       setFilteredLoans([])
     } finally {
