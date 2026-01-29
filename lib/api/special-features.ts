@@ -20,7 +20,6 @@ export interface WelcomeBonus {
   user_id: string
   rank_name: string
   bonus_amount: number
-  bonus_type: string
   status: string
   credited_at: string | null
 }
@@ -92,7 +91,7 @@ export async function getUserBonuses(userId: string): Promise<WelcomeBonus[]> {
 
   const { data, error } = await supabase
     .from("welcome_bonuses")
-    .select("id, user_id, rank_name, bonus_amount, bonus_type, status, credited_at")
+    .select("id, user_id, rank_name, bonus_amount, status, credited_at")
     .eq("user_id", userId)
 
   if (error) throw error
