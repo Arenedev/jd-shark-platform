@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS public.loan_repayment_requests (
 -- Enable RLS for loan repayment requests
 ALTER TABLE public.loan_repayment_requests ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view own repayment requests" ON public.loan_repayment_requests;
+DROP POLICY IF EXISTS "Users can create own repayment requests" ON public.loan_repayment_requests;
+
 -- Users can view their own repayment requests
 CREATE POLICY "Users can view own repayment requests"
   ON public.loan_repayment_requests
