@@ -11,7 +11,7 @@ export async function POST(
 
     const { id, action } = params
     const body = await request.json()
-    const { adminNote, reason } = body
+    const { adminNote } = body
 
     if (action === "approve") {
       const { data: loan, error } = await supabase
@@ -29,11 +29,13 @@ export async function POST(
       console.log("[v0] Loan approved:", id)
       return NextResponse.json({ loan, success: true, message: "Loan approved successfully" })
     } else if (action === "reject") {
+      // Set status to "defaulted" to mark as rejected/denied
+      // Since the allowed statuses are: 'pending', 'approved', 'active', 'repaid', 'defaulted'
+      // We use 'defaulted' to indicate a rejected loan
       const { data: loan, error } = await supabase
         .from("organization_loans")
         .update({
-          status: "rejected",
-          rejection_reason: reason || adminNote,
+          status: "defaulted",
         })
         .eq("id", id)
         .select()
