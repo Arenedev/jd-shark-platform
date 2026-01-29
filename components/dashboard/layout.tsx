@@ -78,9 +78,9 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
           <NavLink href="/dashboard/settings" label="Settings" icon="⚙️" isActive={pathname.includes("/settings")} />
           {profile?.role === "admin" && (
             <NavLink
-              href="/dashboard/admin/create-associate"
-              label="Create Associate"
-              icon="👤"
+              href="/dashboard/admin"
+              label="Admin"
+              icon="🔐"
               isActive={pathname.includes("/admin")}
             />
           )}
@@ -182,9 +182,9 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             />
             {profile?.role === "admin" && (
               <NavLink
-                href="/dashboard/admin/create-associate"
-                label="Create Associate"
-                icon="👤"
+                href="/dashboard/admin"
+                label="Admin"
+                icon="🔐"
                 isActive={pathname.includes("/admin")}
                 onClick={() => setMobileMenuOpen(false)}
               />
