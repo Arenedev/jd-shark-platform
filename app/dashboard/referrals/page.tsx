@@ -1,7 +1,5 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-
 import { useReferrals } from "@/hooks/use-referrals"
 import { createClient } from "@/lib/supabase/client"
 import { Check, Copy } from "lucide-react"
@@ -17,7 +15,7 @@ export default function ReferralsPage() {
   const [profile, setProfile] = useState<any>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const { referrals, stats, loading: referralsLoading, earnings, earningsLoading, referralsByLevel } = useReferrals()
+  const { referrals, stats, loading: referralsLoading } = useReferrals()
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -45,7 +43,7 @@ export default function ReferralsPage() {
     fetchUser()
   }, [])
 
-  if (loading || referralsLoading || earningsLoading) {
+  if (loading || referralsLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
 
@@ -126,84 +124,42 @@ export default function ReferralsPage() {
               </CardContent>
             </Card>
 
-            {/* Referrals by Level */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2, 3, 4, 5].map((level) => (
-                <Card key={level}>
-                  <CardHeader>
-                    <CardTitle>Level {level} Referrals</CardTitle>
-                    <CardDescription>
-                      {referralsByLevel[level]?.length || 0} referral{referralsByLevel[level]?.length !== 1 ? "s" : ""}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {referralsByLevel[level]?.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Joined</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {referralsByLevel[level]?.map((ref: any) => (
-                            <TableRow key={ref.id}>
-                              <TableCell className="font-medium">{ref.referred?.full_name || "Unknown"}</TableCell>
-                              <TableCell>{ref.referred?.email}</TableCell>
-                              <TableCell>{new Date(ref.created_at).toLocaleDateString()}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="text-muted-foreground text-center py-8">No referrals at this level yet</p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Earnings History */}
+            {/* Direct Referrals Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Earnings History</CardTitle>
-                <CardDescription>Track all your referral earnings</CardDescription>
+                <CardTitle>Your Direct Referrals</CardTitle>
+                <CardDescription>
+                  {referrals?.length || 0} direct referral{referrals?.length !== 1 ? "s" : ""}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                {earnings && earnings.length > 0 ? (
+                {referrals && referrals.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Level</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Date Referred</TableHead>
+                        <TableHead className="text-right">Commission Earned</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {earnings.map((earning: any) => (
-                        <TableRow key={earning.id}>
-                          <TableCell>Level {earning.level}</TableCell>
-                          <TableCell className="font-semibold">₦{Number(earning.amount).toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Badge
-                              className={
-                                earning.status === "credited"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              }
-                            >
-                              {earning.status}
-                            </Badge>
+                      {referrals.map((referral: any) => (
+                        <TableRow key={referral.id}>
+                          <TableCell>{referral.full_name || "N/A"}</TableCell>
+                          <TableCell>{referral.email}</TableCell>
+                          <TableCell>{new Date(referral.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right font-semibold text-green-600">
+                            ₦{(referral.commission_earned || 0).toLocaleString()}
                           </TableCell>
-                          <TableCell>{new Date(earning.created_at).toLocaleDateString()}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">No earnings yet</p>
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No direct referrals yet. Share your code to get started!</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
