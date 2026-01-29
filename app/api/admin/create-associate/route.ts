@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Auth user created:", authData.user.id)
 
+    // Generate unique referral code: First 3 letters of name + timestamp
+    const referralCode = `${fullName.substring(0, 3).toUpperCase()}${Date.now().toString().slice(-5)}`
+
     // Create profile using service role
     const { data: profile, error: profileCreateError } = await supabaseServiceRole
       .from("profiles")
@@ -40,6 +43,7 @@ export async function POST(request: NextRequest) {
         full_name: fullName,
         phone: phone || null,
         base_structure: "associate",
+        referral_code: referralCode,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -79,7 +83,7 @@ export async function POST(request: NextRequest) {
           email: profile.email,
           fullName: profile.full_name,
           baseStructure: profile.base_structure,
-          referralCode: authData.user.id.substring(0, 8).toUpperCase(),
+          referralCode: referralCode,
         },
       },
       { status: 201 }

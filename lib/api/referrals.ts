@@ -90,8 +90,11 @@ export async function verifyReferralCode(code: string, intendedAccountType?: str
 
   console.log("[v0] Verifying referral code:", code, "for account type:", intendedAccountType)
 
-  // Fetch all profiles and filter client-side since Supabase doesn't support ::text casting in queries
-  const { data, error } = await supabase.from("profiles").select("id, full_name, username, base_structure")
+  // Query profiles by referral_code column
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, username, base_structure, referral_code")
+    .eq("referral_code", code.toUpperCase())
 
   if (error) {
     console.error("[v0] Referral code verification error:", error)
@@ -99,18 +102,11 @@ export async function verifyReferralCode(code: string, intendedAccountType?: str
   }
 
   if (!data || data.length === 0) {
-    console.log("[v0] No profiles found")
-    return null
-  }
-
-  // Filter client-side by checking if the profile ID starts with the referral code
-  const uppercaseCode = code.toUpperCase()
-  const matchedProfile = data.find((profile) => profile.id.toUpperCase().startsWith(uppercaseCode))
-
-  if (!matchedProfile) {
     console.log("[v0] No profile found with referral code:", code)
     return null
   }
+
+  const matchedProfile = data[0]
 
   // If intended account type is specified, validate that the referrer can create that type
   if (intendedAccountType) {
