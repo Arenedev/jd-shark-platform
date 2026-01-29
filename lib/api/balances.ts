@@ -14,15 +14,17 @@ export interface UserBalances {
 export async function getUserBalances(userId: string): Promise<UserBalances> {
   const supabase = createClient()
 
-  // Get PC from approved investments
+  // Get PC from all investments (approved + active - not withdrawn)
   const { data: investments, error: investError } = await supabase
     .from("investments")
     .select("principal, status")
     .eq("user_id", userId)
-    .eq("status", "active")
+    .in("status", ["approved", "active", "matured"])
 
   const personalCapital = investments?.reduce((sum, inv) => sum + (inv.principal || 0), 0) || 0
-  const lockedCapital = personalCapital // In Phase 2, all PC is locked
+  const lockedCapital = investments
+    ?.filter((inv) => inv.status === "active")
+    .reduce((sum, inv) => sum + (inv.principal || 0), 0) || 0
 
   // Get total returns earned
   const { data: returns, error: returnsError } = await supabase
