@@ -23,7 +23,6 @@ export interface WelcomeBonus {
   bonus_type: string
   status: string
   credited_at: string | null
-  created_at: string
 }
 
 export interface Incentive {
@@ -93,9 +92,8 @@ export async function getUserBonuses(userId: string): Promise<WelcomeBonus[]> {
 
   const { data, error } = await supabase
     .from("welcome_bonuses")
-    .select("*")
+    .select("id, user_id, rank_name, bonus_amount, bonus_type, status, credited_at")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
 
   if (error) throw error
   return data || []

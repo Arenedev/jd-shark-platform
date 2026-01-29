@@ -88,9 +88,6 @@ export default function BonusesPage() {
                   <div>
                     <p className="font-semibold">{bonus.rank_name}</p>
                     <p className="text-sm text-muted-foreground">{bonus.bonus_type.replace("_", " ").toUpperCase()}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(bonus.created_at).toLocaleDateString()}
-                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-bold">{formatCurrency(bonus.bonus_amount)}</p>
