@@ -409,7 +409,7 @@ export default function LoansPage() {
                     <div className="space-y-2">
                       <div>
                         <p className="text-xs text-muted-foreground">Account Name</p>
-                        <p className="text-sm font-medium">{loans.find((l) => l.id === repaymentLoanId)?.profiles?.account_name || "JDShark Investment Ltd"}</p>
+                        <p className="text-sm font-medium">{loans.find((l) => l.id === repaymentLoanId)?.profiles?.bank_account_name || "JDShark Investment Ltd"}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Bank Name</p>
@@ -417,7 +417,7 @@ export default function LoansPage() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Account Number</p>
-                        <p className="text-sm font-medium">{loans.find((l) => l.id === repaymentLoanId)?.profiles?.account_number || "Contact Support for details"}</p>
+                        <p className="text-sm font-medium">{loans.find((l) => l.id === repaymentLoanId)?.profiles?.bank_account_number || "Contact Support for details"}</p>
                       </div>
                     </div>
                   </div>

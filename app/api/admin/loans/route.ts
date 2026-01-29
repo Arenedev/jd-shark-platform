@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
           base_structure,
           personal_capital,
           bank_name,
-          account_name,
-          account_number
+          bank_account_name,
+          bank_account_number
         )
       `
       )

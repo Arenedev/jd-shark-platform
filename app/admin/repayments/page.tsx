@@ -236,7 +236,7 @@ export default function AdminRepaymentsPage() {
                         <div className="grid grid-cols-3 gap-2">
                           <div>
                             <span className="text-muted-foreground">Account Name:</span>
-                            <p className="font-medium">{repayment.profiles.account_name || "N/A"}</p>
+                            <p className="font-medium">{repayment.profiles.bank_account_name || "N/A"}</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Bank:</span>
@@ -244,7 +244,7 @@ export default function AdminRepaymentsPage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground">Account Number:</span>
-                            <p className="font-medium">{repayment.profiles.account_number || "N/A"}</p>
+                            <p className="font-medium">{repayment.profiles.bank_account_number || "N/A"}</p>
                           </div>
                         </div>
                       </div>

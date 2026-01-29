@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
           full_name,
           email,
           bank_name,
-          account_name,
-          account_number
+          bank_account_name,
+          bank_account_number
         )
       `
       )
