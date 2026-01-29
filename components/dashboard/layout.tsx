@@ -76,7 +76,7 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             <NavLink href="/dashboard/referrals" label="Referrals" icon="👥" isActive={pathname.includes("/referrals")} />
           )}
           <NavLink href="/dashboard/settings" label="Settings" icon="⚙️" isActive={pathname.includes("/settings")} />
-          {profile?.role === "admin" && (
+          {profile?.is_admin && (
             <NavLink
               href="/dashboard/admin"
               label="Admin"
@@ -180,7 +180,7 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               isActive={pathname.includes("/settings")}
               onClick={() => setMobileMenuOpen(false)}
             />
-            {profile?.role === "admin" && (
+            {profile?.is_admin && (
               <NavLink
                 href="/dashboard/admin"
                 label="Admin"

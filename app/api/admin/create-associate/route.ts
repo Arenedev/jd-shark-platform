@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
         full_name: fullName,
         phone: phone || null,
         base_structure: "associate",
-        role: "user",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
