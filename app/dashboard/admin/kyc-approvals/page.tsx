@@ -154,25 +154,21 @@ export default function KYCApprovalsPage() {
 
   if (loading || profileLoading) {
     return (
-      <DashboardLayout profile={profile || { id: userId }}>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </DashboardLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     )
   }
 
   if (error && error.includes('permission')) {
     return (
-      <DashboardLayout profile={profile || { id: userId }}>
-        <div className="max-w-2xl mx-auto pt-8">
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="pt-6">
-              <p className="text-red-700">{error}</p>
-            </CardContent>
-          </Card>
-        </div>
-      </DashboardLayout>
+      <div className="max-w-2xl mx-auto pt-8">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-700">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
