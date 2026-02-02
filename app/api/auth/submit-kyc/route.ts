@@ -41,8 +41,11 @@ export async function POST(request: NextRequest) {
 
       if (uploadError) {
         console.error("[v0] KYC API: Upload error:", uploadError)
+        const errorMsg = typeof uploadError === "object" && uploadError !== null && "message" in uploadError
+          ? (uploadError as any).message
+          : String(uploadError)
         return NextResponse.json(
-          { error: `Upload failed: ${uploadError.message}` },
+          { error: `Upload failed: ${errorMsg}` },
           { status: 400 }
         )
       }
@@ -80,8 +83,11 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error("[v0] KYC API: Profile update error:", updateError)
+      const errorMsg = typeof updateError === "object" && updateError !== null && "message" in updateError
+        ? (updateError as any).message
+        : String(updateError)
       return NextResponse.json(
-        { error: `Profile update failed: ${updateError.message}` },
+        { error: `Profile update failed: ${errorMsg}` },
         { status: 400 }
       )
     }
