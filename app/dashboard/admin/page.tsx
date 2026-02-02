@@ -1,12 +1,12 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { Loader2, CheckCircle, AlertCircle, Check, X } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function AdminDashboard() {
@@ -14,12 +14,89 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [newAssociate, setNewAssociate] = useState<any>(null)
+  const [kycSubmissions, setKycSubmissions] = useState<any[]>([])
+  const [kycLoading, setKycLoading] = useState(false)
+  const [approvalLoading, setApprovalLoading] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     fullName: "",
     phone: "",
   })
+
+  // Load KYC submissions when component mounts
+  useEffect(() => {
+    loadKycSubmissions()
+  }, [])
+
+  const loadKycSubmissions = async () => {
+    setKycLoading(true)
+    try {
+      const response = await fetch("/api/admin/kyc-submissions")
+      const data = await response.json()
+      if (response.ok) {
+        setKycSubmissions(data.submissions || [])
+      } else {
+        console.error("[v0] Failed to load KYC submissions:", data.error)
+      }
+    } catch (err) {
+      console.error("[v0] Error loading KYC submissions:", err)
+    } finally {
+      setKycLoading(false)
+    }
+  }
+
+  const handleApproveKyc = async (userId: string) => {
+    setApprovalLoading(userId)
+    try {
+      const response = await fetch("/api/admin/approve-kyc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, status: "approved" }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        alert(`Failed to approve KYC: ${data.error}`)
+        return
+      }
+
+      alert("KYC approved successfully")
+      loadKycSubmissions()
+    } catch (err) {
+      console.error("[v0] Error approving KYC:", err)
+      alert("Error approving KYC")
+    } finally {
+      setApprovalLoading(null)
+    }
+  }
+
+  const handleRejectKyc = async (userId: string) => {
+    setApprovalLoading(userId)
+    try {
+      const response = await fetch("/api/admin/approve-kyc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, status: "rejected" }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        alert(`Failed to reject KYC: ${data.error}`)
+        return
+      }
+
+      alert("KYC rejected successfully")
+      loadKycSubmissions()
+    } catch (err) {
+      console.error("[v0] Error rejecting KYC:", err)
+      alert("Error rejecting KYC")
+    } finally {
+      setApprovalLoading(null)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -72,8 +149,9 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="create-associate" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-1">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="create-associate">Create Associate</TabsTrigger>
+            <TabsTrigger value="kyc-approval">KYC Approvals</TabsTrigger>
           </TabsList>
 
           <TabsContent value="create-associate" className="space-y-6">
@@ -191,6 +269,111 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="kyc-approval" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>KYC Approval Management</CardTitle>
+                <CardDescription>Review and approve pending KYC submissions from users</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {kycLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : kycSubmissions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No pending KYC submissions</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {kycSubmissions.map((submission: any) => (
+                      <Card key={submission.id} className="border">
+                        <CardContent className="pt-6">
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Name</p>
+                              <p className="font-medium">{submission.full_name}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Email</p>
+                              <p className="font-medium">{submission.email}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">NIN/BVN</p>
+                              <p className="font-medium">{submission.nin_or_bvn || "N/A"}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Phone</p>
+                              <p className="font-medium">{submission.phone || "N/A"}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Bank Account</p>
+                              <p className="font-medium">{submission.bank_account_number || "N/A"}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Status</p>
+                              <p className="font-medium capitalize">{submission.kyc_status}</p>
+                            </div>
+                          </div>
+                          {submission.kyc_document_url && (
+                            <div className="mb-4">
+                              <p className="text-sm text-muted-foreground">Document</p>
+                              <a
+                                href={submission.kyc_document_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-sm"
+                              >
+                                View Document
+                              </a>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleApproveKyc(submission.id)}
+                              disabled={approvalLoading === submission.id}
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                            >
+                              {approvalLoading === submission.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Approving...
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="mr-2 h-4 w-4" />
+                                  Approve
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              onClick={() => handleRejectKyc(submission.id)}
+                              disabled={approvalLoading === submission.id}
+                              variant="outline"
+                              className="flex-1"
+                            >
+                              {approvalLoading === submission.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Rejecting...
+                                </>
+                              ) : (
+                                <>
+                                  <X className="mr-2 h-4 w-4" />
+                                  Reject
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 )}
               </CardContent>
