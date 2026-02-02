@@ -112,9 +112,9 @@ export default function InvestmentsPage() {
     return "Standard"
   }
 
-  if (loading) {
+  if (loading || !profile) {
     return (
-      <DashboardLayout profile={profile}>
+      <DashboardLayout profile={profile || { id: userId }}>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
