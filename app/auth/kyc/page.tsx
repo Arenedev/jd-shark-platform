@@ -61,41 +61,34 @@ export default function KYCPage() {
         return
       }
 
-      // Upload document to storage
-      const fileName = `${user.id}-${Date.now()}`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("kyc-documents")
-        .upload(`kyc/${fileName}`, documentFile)
+      // Prepare FormData for multipart upload
+      const formDataToSend = new FormData()
+      formDataToSend.append("file", documentFile)
+      formDataToSend.append("userId", user.id)
+      formDataToSend.append("kycData", JSON.stringify(formData))
 
-      if (uploadError) throw uploadError
+      console.log("[v0] Submitting KYC via API:", user.id)
 
-      // Get public URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("kyc-documents").getPublicUrl(`kyc/${fileName}`)
+      // Call server API to handle upload (uses service role, bypasses RLS)
+      const response = await fetch("/api/auth/submit-kyc", {
+        method: "POST",
+        body: formDataToSend,
+      })
 
-      // Update profile with KYC info
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          nin_or_bvn: formData.nin_or_bvn,
-          phone: formData.phone,
-          country: formData.country,
-          bank_name: formData.bank_name,
-          bank_account_number: formData.bank_account_number,
-          bank_account_name: formData.bank_account_name,
-          kyc_document_url: publicUrl,
-          kyc_status: "pending",
-        })
-        .eq("id", user.id)
+      const result = await response.json()
 
-      if (updateError) throw updateError
+      if (!response.ok) {
+        throw new Error(result.error || "KYC submission failed")
+      }
+
+      console.log("[v0] KYC submission successful")
 
       setSuccess(true)
       setTimeout(() => {
         router.push("/dashboard")
       }, 2000)
     } catch (err) {
+      console.error("[v0] KYC submission error:", err)
       setError(err instanceof Error ? err.message : "KYC submission failed")
     } finally {
       setLoading(false)
