@@ -28,13 +28,12 @@ export async function POST(request: NextRequest) {
     
     try {
       const arrayBuffer = await file.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
 
-      console.log("[v0] KYC API: Uploading document:", fileName, "Size:", buffer.length)
+      console.log("[v0] KYC API: Uploading document:", fileName, "Size:", arrayBuffer.byteLength)
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("kyc-documents")
-        .upload(`kyc/${fileName}`, buffer, {
+        .upload(`kyc/${fileName}`, new Blob([arrayBuffer], { type: file.type }), {
           contentType: file.type,
           upsert: false,
         })
