@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Get user's rank data
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("rank, base_structure, personal_capital, network_capital, grand_network_capital")
+      .select("current_rank, base_structure, personal_capital, network_capital")
       .eq("id", userId)
       .single()
 
@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
     const rankConfigs = await getRankConfigurations()
 
     // Get current rank config
-    const currentRankConfig = rankConfigs.find((r) => r.rank_name === profile.rank)
+    const currentRankConfig = rankConfigs.find((r) => r.rank_name === profile.current_rank)
 
     // Find next rank
-    const currentRankIndex = rankConfigs.findIndex((r) => r.rank_name === profile.rank)
+    const currentRankIndex = rankConfigs.findIndex((r) => r.rank_name === profile.current_rank)
     const nextRankConfig = currentRankIndex < rankConfigs.length - 1 ? rankConfigs[currentRankIndex + 1] : null
 
     // Calculate progress to next rank
@@ -50,11 +50,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      currentRank: profile.rank,
+      currentRank: profile.current_rank,
       baseStructure: profile.base_structure,
       personalCapital: profile.personal_capital,
       networkCapital: profile.network_capital,
-      grandNetworkCapital: profile.grand_network_capital,
       currentRankConfig,
       nextRankConfig,
       progressToNextRank,

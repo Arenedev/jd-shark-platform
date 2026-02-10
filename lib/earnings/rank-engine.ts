@@ -150,7 +150,7 @@ export async function checkAndUpdateRank(userId: string): Promise<{
   // Get user's current data
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("rank, personal_capital, network_capital, base_structure")
+    .select("current_rank, personal_capital, network_capital, base_structure")
     .eq("id", userId)
     .single()
 
@@ -163,18 +163,16 @@ export async function checkAndUpdateRank(userId: string): Promise<{
     return { previousRank: "", newRank: "", rankChanged: false, bonusAwarded: 0 }
   }
 
-  const previousRank = profile.rank || "fin_starter"
+  const previousRank = profile.current_rank || "fin_starter"
 
   // Calculate current NC
   const nc = await calculateNetworkCapital(userId)
-  const gnc = await calculateGrandNetworkCapital(userId)
 
-  // Update NC and GNC in profile
+  // Update NC in profile
   await supabase
     .from("profiles")
     .update({
       network_capital: nc,
-      grand_network_capital: gnc,
       updated_at: new Date().toISOString(),
     })
     .eq("id", userId)
@@ -198,7 +196,7 @@ export async function checkAndUpdateRank(userId: string): Promise<{
     await supabase
       .from("profiles")
       .update({
-        rank: newRank,
+        current_rank: newRank,
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId)
@@ -206,44 +204,42 @@ export async function checkAndUpdateRank(userId: string): Promise<{
     // Record rank change history
     await supabase.from("rank_history").insert({
       user_id: userId,
-      previous_rank: previousRank,
+      old_rank: previousRank,
       new_rank: newRank,
-      pc_at_change: profile.personal_capital,
-      nc_at_change: nc,
-      bonus_awarded: bonusAmount,
+      personal_capital: profile.personal_capital,
+      network_capital: nc,
+      changed_at: new Date().toISOString(),
     })
 
     // Credit rank bonus if applicable
     if (bonusAmount > 0) {
-      // Add to earnings
-      await supabase.from("earnings").insert({
+      // Add to mlm_earnings (not earnings table)
+      await supabase.from("mlm_earnings").insert({
         user_id: userId,
-        earning_type: "rank_bonus",
         amount: bonusAmount,
-        rank_at_time: newRank,
         status: "credited",
         credited_at: new Date().toISOString(),
-        calculation_details: {
-          rank_achieved: newRank,
-          previous_rank: previousRank,
-        },
       })
 
-      // Credit to wallet earnings balance
-      await supabase
-        .from("wallets")
-        .update({
-          earnings_balance: supabase.sql`COALESCE(earnings_balance, 0) + ${bonusAmount}`,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId)
+      // Update wallet balance directly (don't use supabase.sql syntax)
+      const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", userId).single()
+
+      if (wallet) {
+        await supabase
+          .from("wallets")
+          .update({
+            balance: (wallet.balance || 0) + bonusAmount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId)
+      }
 
       // Create notification
       await supabase.from("notifications").insert({
         user_id: userId,
         type: "rank_upgrade",
         title: "Rank Upgrade!",
-        message: `Congratulations! You've been promoted to ${newRank.replace(/_/g, " ").toUpperCase()}. A bonus of ₦${bonusAmount.toLocaleString()} has been credited to your earnings.`,
+        message: `Congratulations! You've been promoted to ${newRank.replace(/_/g, " ").toUpperCase()}. A bonus of ₦${bonusAmount.toLocaleString()} has been credited to your wallet.`,
         data: { new_rank: newRank, bonus: bonusAmount },
       })
     }
@@ -265,7 +261,7 @@ export async function calculatePCEarnings(
   const supabase = getAdminClient()
 
   // Get user's profile and rank
-  const { data: profile } = await supabase.from("profiles").select("rank, base_structure").eq("id", userId).single()
+  const { data: profile } = await supabase.from("profiles").select("current_rank, base_structure").eq("id", userId).single()
 
   if (!profile) return 0
 
@@ -280,7 +276,7 @@ export async function calculatePCEarnings(
     // Organizations get 8% or 9% based on tier
     earningRate = principalAmount >= 100000000 ? 9 : 8
   } else if (profile.base_structure === "associate") {
-    const rankConfig = rankConfigs.find((r) => r.rank_name === profile.rank)
+    const rankConfig = rankConfigs.find((r) => r.rank_name === profile.current_rank)
     earningRate = rankConfig?.pc_earning_rate || 5
   }
 
@@ -390,42 +386,26 @@ export async function processMonthlyEarnings(): Promise<{
       )
 
       if (pcEarnings > 0) {
-        // Record earnings
-        await supabase.from("earnings").insert({
+        // Record earnings to mlm_earnings
+        await supabase.from("mlm_earnings").insert({
           user_id: investment.user_id,
-          earning_type: "pc_interest",
-          source_investment_id: investment.id,
           amount: pcEarnings,
-          rank_at_time: userProfile?.rank || "fin_starter",
           status: "credited",
           credited_at: now.toISOString(),
-          earning_period_start: periodStart.toISOString(),
-          earning_period_end: periodEnd.toISOString(),
-          calculation_details: {
-            principal: investment.principal_amount,
-            rate: investment.effective_roi_rate,
-          },
         })
 
-        // Credit to wallet earnings balance
-        await supabase
-          .from("wallets")
-          .update({
-            earnings_balance: supabase.sql`COALESCE(earnings_balance, 0) + ${pcEarnings}`,
-            updated_at: now.toISOString(),
-          })
-          .eq("user_id", investment.user_id)
+        // Credit to wallet balance
+        const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", investment.user_id).single()
 
-        // Update investment total earned
-        await supabase
-          .from("lcr_investments")
-          .update({
-            total_earned: supabase.sql`COALESCE(total_earned, 0) + ${pcEarnings}`,
-            last_earning_date: now.toISOString().split("T")[0],
-            status: "earning",
-            updated_at: now.toISOString(),
-          })
-          .eq("id", investment.id)
+        if (wallet) {
+          await supabase
+            .from("wallets")
+            .update({
+              balance: (wallet.balance || 0) + pcEarnings,
+              updated_at: now.toISOString(),
+            })
+            .eq("user_id", investment.user_id)
+        }
 
         totalEarnings += pcEarnings
         processed++
@@ -450,32 +430,30 @@ export async function processMonthlyEarnings(): Promise<{
               )
 
               if (networkEarnings > 0) {
-                // Record network earnings
-                await supabase.from("earnings").insert({
+                // Record network earnings to mlm_earnings
+                await supabase.from("mlm_earnings").insert({
                   user_id: upline.referrer_id,
-                  earning_type: upline.level <= 2 ? "network_commission" : "grand_network_commission",
-                  source_user_id: investment.user_id,
-                  source_investment_id: investment.id,
-                  generation_level: upline.level,
                   amount: networkEarnings,
                   status: "credited",
                   credited_at: now.toISOString(),
-                  earning_period_start: periodStart.toISOString(),
-                  earning_period_end: periodEnd.toISOString(),
-                  calculation_details: {
-                    source_returns: pcEarnings,
-                    generation: upline.level,
-                  },
                 })
 
                 // Credit to wallet
-                await supabase
+                const { data: uplineWallet } = await supabase
                   .from("wallets")
-                  .update({
-                    earnings_balance: supabase.sql`COALESCE(earnings_balance, 0) + ${networkEarnings}`,
-                    updated_at: now.toISOString(),
-                  })
+                  .select("balance")
                   .eq("user_id", upline.referrer_id)
+                  .single()
+
+                if (uplineWallet) {
+                  await supabase
+                    .from("wallets")
+                    .update({
+                      balance: (uplineWallet.balance || 0) + networkEarnings,
+                      updated_at: now.toISOString(),
+                    })
+                    .eq("user_id", upline.referrer_id)
+                }
 
                 totalEarnings += networkEarnings
               }
@@ -533,28 +511,26 @@ export async function processOrganizationReferralCommission(
   // Calculate 1% commission
   const commission = depositAmount * 0.01
 
-  // Record earnings
-  await supabase.from("earnings").insert({
+  // Record earnings to mlm_earnings
+  await supabase.from("mlm_earnings").insert({
     user_id: referrerId,
-    earning_type: "org_commission",
-    source_user_id: referredUserId,
     amount: commission,
     status: "credited",
     credited_at: new Date().toISOString(),
-    calculation_details: {
-      deposit_amount: depositAmount,
-      commission_rate: 1,
-    },
   })
 
-  // Credit to wallet
-  await supabase
-    .from("wallets")
-    .update({
-      earnings_balance: supabase.sql`COALESCE(earnings_balance, 0) + ${commission}`,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", referrerId)
+  // Credit to wallet balance
+  const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", referrerId).single()
+
+  if (wallet) {
+    await supabase
+      .from("wallets")
+      .update({
+        balance: (wallet.balance || 0) + commission,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", referrerId)
+  }
 
   // Notification
   await supabase.from("notifications").insert({

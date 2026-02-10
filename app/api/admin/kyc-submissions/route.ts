@@ -1,35 +1,44 @@
 import { createServiceRoleClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
+    const { fetchAll } = await request.json()
     const supabase = createServiceRoleClient()
 
-    console.log("[v0] Admin: Fetching KYC submissions")
+    console.log("[v0] Fetching KYC submissions...", { fetchAll })
 
-    // Fetch all KYC submissions with pending status
-    const { data, error } = await supabase
+    let query = supabase
       .from("profiles")
-      .select("id, email, full_name, phone, nin_or_bvn, bank_name, bank_account_number, bank_account_name, kyc_document_url, kyc_status")
-      .eq("kyc_status", "pending")
+      .select("id, email, full_name, phone, nin_or_bvn, bank_name, bank_account_number, bank_account_name, kyc_document_url, kyc_status, created_at")
       .order("created_at", { ascending: false })
 
+    // If fetchAll is false or not specified, only fetch pending
+    if (!fetchAll) {
+      query = query.eq("kyc_status", "pending")
+    } else {
+      // If fetchAll is true, fetch all records with kyc status
+      query = query.not("kyc_status", "is", null)
+    }
+
+    const { data, error } = await query
+
     if (error) {
-      console.error("[v0] Admin: Error fetching KYC submissions:", error)
+      console.error("[v0] Error fetching KYC submissions:", error)
       return NextResponse.json(
         { error: `Failed to fetch submissions: ${error.message}` },
         { status: 400 }
       )
     }
 
-    console.log("[v0] Admin: Found", data?.length || 0, "pending KYC submissions")
+    console.log("[v0] Found", data?.length || 0, fetchAll ? "total KYC" : "pending KYC", "submissions")
 
     return NextResponse.json({
       success: true,
-      submissions: data || [],
+      data: data || [],
     })
   } catch (error) {
-    console.error("[v0] Admin: Error:", error)
+    console.error("[v0] KYC submissions error:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }

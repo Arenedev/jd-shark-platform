@@ -322,7 +322,7 @@ function NewInvestmentContent({ searchParams, router }: any) {
                   disabled={submitting}
                   className="text-lg"
                 />
-                <p className="text-xs text-muted-foreground">Min: ₦1,000 | Max: ₦50,000,000</p>
+                <p className="text-xs text-muted-foreground">Min: ₦100,000 | Max: ₦50,000,000</p>
               </div>
 
               <div className="space-y-2">
@@ -335,9 +335,9 @@ function NewInvestmentContent({ searchParams, router }: any) {
                   disabled={submitting}
                   className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground"
                 >
-                  <option value="1_year">1 Year Lock (15% ROI/month)</option>
+                  <option value="1_year">1 Year Lock</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Lock your investment for 1 year to earn monthly returns</p>
+                <p className="text-xs text-muted-foreground">Lock your investment for 1 year to earn returns</p>
               </div>
 
               <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
