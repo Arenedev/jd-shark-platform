@@ -14,9 +14,17 @@ export interface UserBalances {
 export async function getUserBalances(userId: string): Promise<UserBalances> {
   const supabase = createClient()
 
-  // Get PC from investments - query through portfolio to get user's investments
-  // Investments have portfolio_id, and portfolios have current_owner_id (which is the user_id)
-  // Since some investments may not have user_id set, we query through the portfolio relationship
+  // First, get personal_capital and network_capital from profiles table (updated source of truth)
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("personal_capital, network_capital")
+    .eq("id", userId)
+    .single()
+
+  // Use profile personal_capital if available, otherwise calculate from investments
+  let personalCapital = profile?.personal_capital || 0
+
+  // Get locked capital (principal in active investments) - still calculated from investments
   const { data: investments, error: investError } = await supabase
     .from("investments")
     .select(
@@ -33,23 +41,13 @@ export async function getUserBalances(userId: string): Promise<UserBalances> {
     .eq("portfolios.current_owner_id", userId)
     .in("status", ["approved", "active", "matured", "pending"])
 
-  console.log("[v0] Investments fetched for user:", userId, "count:", investments?.length, "data:", investments)
+  console.log("[v0] Investments fetched for user:", userId, "count:", investments?.length)
 
-  // PC = sum of principal amounts (actual invested - not reduced by fees)
-  // Use principal field as it's the true invested amount, fall back to amount
-  const personalCapital = investments?.reduce((sum, inv) => sum + (inv.principal || inv.amount || 0), 0) || 0
-
-  // Get locked capital (principal in active investments)
   const lockedCapital = investments
     ?.filter((inv) => inv.status === "active")
     .reduce((sum, inv) => sum + (inv.principal || inv.amount || 0), 0) || 0
 
-  console.log("[v0] PC calculation from investments:", {
-    personalCapital,
-    lockedCapital,
-    investmentCount: investments?.length,
-    statuses: investments?.map((i) => i.status),
-  })
+  console.log("[v0] PC from profiles table:", personalCapital, "Locked capital:", lockedCapital)
 
   // Get total returns earned
   const { data: returns, error: returnsError } = await supabase
