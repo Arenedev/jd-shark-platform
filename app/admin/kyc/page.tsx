@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { checkAdminSession } from "@/lib/admin-auth"
-import { createAdminClient } from "@/lib/supabase/admin-client"
 import AdminLayout from "@/components/admin/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -27,15 +26,27 @@ export default function AdminKYCPage() {
 
   async function fetchData() {
     try {
-      const supabase = createAdminClient()
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .or("kyc_document_url.not.is.null,kyc_status.eq.pending,kyc_status.eq.approved,kyc_status.eq.rejected")
-        .order("created_at", { ascending: false })
-      setKycUsers(data || [])
+      console.log("[v0] Fetching KYC data from API...")
+      const response = await fetch("/api/admin/kyc-submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      console.log("[v0] KYC data received:", result)
+      setKycUsers(result.data || [])
     } catch (error) {
       console.error("[v0] Error fetching KYC data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load KYC submissions",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -44,21 +55,33 @@ export default function AdminKYCPage() {
   async function handleKYCAction(userId: string, status: "approved" | "rejected") {
     setProcessing(userId)
     try {
-      const supabase = createAdminClient()
-      const { error } = await supabase.from("profiles").update({ kyc_status: status }).eq("id", userId)
+      console.log("[v0] Submitting KYC action:", { userId, status })
+      const response = await fetch("/api/admin/approve-kyc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, status }),
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      console.log("[v0] KYC action completed:", result)
 
       toast({
         title: "Success",
         description: `KYC ${status} successfully`,
       })
+
+      // Refresh the list
       await fetchData()
     } catch (error) {
+      console.error("[v0] Error processing KYC action:", error)
       toast({
-        variant: "destructive",
         title: "Error",
-        description: "Failed to update KYC status",
+        description: `Failed to ${status} KYC`,
+        variant: "destructive",
       })
     } finally {
       setProcessing(null)

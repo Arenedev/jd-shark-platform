@@ -13,9 +13,10 @@ export async function POST(request: NextRequest) {
 
     let existingProfile = null
     try {
-      const { data } = await supabase.from("profiles").select("id").eq("id", userId).single()
+      const { data } = await supabase.from("profiles").select("id").eq("id", userId).maybeSingle()
       existingProfile = data
     } catch (err) {
+      console.error("[v0] Error checking profile:", err)
       // Profile doesn't exist, that's fine
       existingProfile = null
     }
@@ -25,6 +26,8 @@ export async function POST(request: NextRequest) {
       console.log("[v0] Profile already exists:", userId)
       return NextResponse.json({ message: "Profile already exists" }, { status: 200 })
     }
+
+    console.log("[v0] Creating new profile for user:", userId)
 
     const { error: profileError, data: profileData } = await supabase
       .from("profiles")
@@ -37,30 +40,31 @@ export async function POST(request: NextRequest) {
         current_rank: "unranked",
         personal_capital: 0,
         network_capital: 0,
-        grand_network_capital: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .select()
-      .single()
+      .maybeSingle()
 
     if (profileError) {
-      console.error("[v0] Profile creation error:", profileError)
-      return NextResponse.json({ message: "Failed to create profile" }, { status: 500 })
+      console.error("[v0] Profile creation error:", profileError.message)
+      return NextResponse.json({ message: `Failed to create profile: ${profileError.message}` }, { status: 500 })
     }
 
-    console.log("[v0] Profile created on-demand:", profileData)
+    console.log("[v0] Profile created on-demand:", profileData?.id)
 
     let existingWallet = null
     try {
-      const { data } = await supabase.from("wallets").select("id").eq("user_id", userId).single()
+      const { data } = await supabase.from("wallets").select("id").eq("user_id", userId).maybeSingle()
       existingWallet = data
     } catch (err) {
+      console.error("[v0] Error checking wallet:", err)
       // Wallet doesn't exist, that's fine
       existingWallet = null
     }
 
     if (!existingWallet) {
+      console.log("[v0] Creating new wallet for user:", userId)
       const { error: walletError } = await supabase
         .from("wallets")
         .insert({
@@ -75,10 +79,10 @@ export async function POST(request: NextRequest) {
         .select()
 
       if (walletError) {
-        console.error("[v0] Wallet creation error:", walletError)
+        console.error("[v0] Wallet creation error:", walletError.message)
         // Don't fail if wallet creation fails, profile is more important
       } else {
-        console.log("[v0] Wallet created on-demand")
+        console.log("[v0] Wallet created on-demand for user:", userId)
       }
     }
 
