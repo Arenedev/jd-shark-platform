@@ -322,7 +322,7 @@ function NewInvestmentContent({ searchParams, router }: any) {
                   disabled={submitting}
                   className="text-lg"
                 />
-                <p className="text-xs text-muted-foreground">Min: ₦1,000 | Max: ₦50,000,000</p>
+                <p className="text-xs text-muted-foreground">Min: ₦100,000 | Max: ₦50,000,000</p>
               </div>
 
               <div className="space-y-2">
