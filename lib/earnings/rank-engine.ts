@@ -150,7 +150,7 @@ export async function checkAndUpdateRank(userId: string): Promise<{
   // Get user's current data
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("rank, personal_capital, network_capital, base_structure")
+    .select("current_rank, personal_capital, network_capital, base_structure")
     .eq("id", userId)
     .single()
 
@@ -163,7 +163,7 @@ export async function checkAndUpdateRank(userId: string): Promise<{
     return { previousRank: "", newRank: "", rankChanged: false, bonusAwarded: 0 }
   }
 
-  const previousRank = profile.rank || "fin_starter"
+  const previousRank = profile.current_rank || "fin_starter"
 
   // Calculate current NC
   const nc = await calculateNetworkCapital(userId)
@@ -198,7 +198,7 @@ export async function checkAndUpdateRank(userId: string): Promise<{
     await supabase
       .from("profiles")
       .update({
-        rank: newRank,
+        current_rank: newRank,
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId)
@@ -265,7 +265,7 @@ export async function calculatePCEarnings(
   const supabase = getAdminClient()
 
   // Get user's profile and rank
-  const { data: profile } = await supabase.from("profiles").select("rank, base_structure").eq("id", userId).single()
+  const { data: profile } = await supabase.from("profiles").select("current_rank, base_structure").eq("id", userId).single()
 
   if (!profile) return 0
 
@@ -280,7 +280,7 @@ export async function calculatePCEarnings(
     // Organizations get 8% or 9% based on tier
     earningRate = principalAmount >= 100000000 ? 9 : 8
   } else if (profile.base_structure === "associate") {
-    const rankConfig = rankConfigs.find((r) => r.rank_name === profile.rank)
+    const rankConfig = rankConfigs.find((r) => r.rank_name === profile.current_rank)
     earningRate = rankConfig?.pc_earning_rate || 5
   }
 
