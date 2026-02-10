@@ -74,6 +74,14 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               isActive={pathname.includes("/loans")}
             />
           )}
+          {(profile?.base_structure === "associate" || profile?.base_structure === "organization") && (
+            <NavLink
+              href="/dashboard/referrals"
+              label="Referrals"
+              icon="👥"
+              isActive={pathname.includes("/referrals")}
+            />
+          )}
           <NavLink href="/dashboard/settings" label="Settings" icon="⚙️" isActive={pathname.includes("/settings")} />
           {profile?.is_admin && (
             <NavLink
@@ -162,6 +170,15 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
                 label="Loans"
                 icon="💰"
                 isActive={pathname.includes("/loans")}
+                onClick={() => setMobileMenuOpen(false)}
+              />
+            )}
+            {(profile?.base_structure === "associate" || profile?.base_structure === "organization") && (
+              <NavLink
+                href="/dashboard/referrals"
+                label="Referrals"
+                icon="👥"
+                isActive={pathname.includes("/referrals")}
                 onClick={() => setMobileMenuOpen(false)}
               />
             )}
