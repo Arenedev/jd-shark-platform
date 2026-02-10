@@ -58,6 +58,14 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             icon="📈"
             isActive={pathname.includes("/investments")}
           />
+          {profile?.base_structure === "associate" && (
+            <NavLink
+              href="/dashboard/network"
+              label="Network & Ranks"
+              icon="🏆"
+              isActive={pathname.includes("/network")}
+            />
+          )}
           {profile?.base_structure === "organization" && (
             <NavLink
               href="/dashboard/loans"
@@ -139,6 +147,15 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               isActive={pathname.includes("/investments")}
               onClick={() => setMobileMenuOpen(false)}
             />
+            {profile?.base_structure === "associate" && (
+              <NavLink
+                href="/dashboard/network"
+                label="Network & Ranks"
+                icon="🏆"
+                isActive={pathname.includes("/network")}
+                onClick={() => setMobileMenuOpen(false)}
+              />
+            )}
             {profile?.base_structure === "organization" && (
               <NavLink
                 href="/dashboard/loans"
