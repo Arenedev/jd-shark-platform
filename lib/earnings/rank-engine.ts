@@ -167,14 +167,12 @@ export async function checkAndUpdateRank(userId: string): Promise<{
 
   // Calculate current NC
   const nc = await calculateNetworkCapital(userId)
-  const gnc = await calculateGrandNetworkCapital(userId)
 
-  // Update NC and GNC in profile
+  // Update NC in profile
   await supabase
     .from("profiles")
     .update({
       network_capital: nc,
-      grand_network_capital: gnc,
       updated_at: new Date().toISOString(),
     })
     .eq("id", userId)
