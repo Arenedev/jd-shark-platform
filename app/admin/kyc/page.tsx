@@ -8,11 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Eye } from "lucide-react"
 
 export default function AdminKYCPage() {
   const [loading, setLoading] = useState(true)
   const [kycUsers, setKycUsers] = useState<any[]>([])
+  const [stats, setStats] = useState({ approved: 0, pending: 0, rejected: 0 })
   const [processing, setProcessing] = useState<string | null>(null)
   const { toast } = useToast()
 
@@ -26,19 +27,33 @@ export default function AdminKYCPage() {
 
   async function fetchData() {
     try {
-      console.log("[v0] Fetching KYC data from API...")
-      const response = await fetch("/api/admin/kyc-submissions", {
+      console.log("[v0] Fetching KYC stats and data...")
+
+      // Fetch stats
+      const statsResponse = await fetch("/api/admin/kyc-stats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
       })
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`)
+      if (statsResponse.ok) {
+        const statsResult = await statsResponse.json()
+        console.log("[v0] KYC stats received:", statsResult.stats)
+        setStats(statsResult.stats)
       }
 
-      const result = await response.json()
-      console.log("[v0] KYC data received:", result)
+      // Fetch all KYC submissions (including approved and rejected for full view)
+      const allResponse = await fetch("/api/admin/kyc-submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fetchAll: true }),
+      })
+
+      if (!allResponse.ok) {
+        throw new Error(`API error: ${allResponse.statusText}`)
+      }
+
+      const result = await allResponse.json()
+      console.log("[v0] All KYC data received:", result)
       setKycUsers(result.data || [])
     } catch (error) {
       console.error("[v0] Error fetching KYC data:", error)
@@ -74,7 +89,7 @@ export default function AdminKYCPage() {
         description: `KYC ${status} successfully`,
       })
 
-      // Refresh the list
+      // Refresh the list and stats
       await fetchData()
     } catch (error) {
       console.error("[v0] Error processing KYC action:", error)
@@ -114,7 +129,7 @@ export default function AdminKYCPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {kycUsers?.filter((u: any) => u.kyc_status === "approved").length || 0}
+                {stats.approved}
               </div>
             </CardContent>
           </Card>
@@ -125,7 +140,7 @@ export default function AdminKYCPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">
-                {kycUsers?.filter((u: any) => u.kyc_status === "pending").length || 0}
+                {stats.pending}
               </div>
             </CardContent>
           </Card>
@@ -136,7 +151,7 @@ export default function AdminKYCPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                {kycUsers?.filter((u: any) => u.kyc_status === "rejected").length || 0}
+                {stats.rejected}
               </div>
             </CardContent>
           </Card>
@@ -174,14 +189,15 @@ export default function AdminKYCPage() {
                       <TableCell className="whitespace-nowrap">{usr.email}</TableCell>
                       <TableCell>
                         {usr.kyc_document_url ? (
-                          <a
-                            href={usr.kyc_document_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm"
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-blue-600 hover:text-blue-700"
+                            onClick={() => window.open(usr.kyc_document_url, "_blank")}
                           >
-                            View Document
-                          </a>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
                         ) : (
                           <span className="text-muted-foreground text-sm">No document</span>
                         )}
