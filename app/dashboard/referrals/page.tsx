@@ -61,14 +61,14 @@ export default function ReferralsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Referral System</h1>
           <p className="text-muted-foreground">
-            {profile?.base_structure === "organization"
+            {(profile?.base_structure === "organization" || profile?.base_structure === "associate")
               ? "Earn 1% commission on your direct referrals' investment returns"
               : "Referral system is not available for your account type"}
           </p>
         </div>
 
-        {/* Only show for Organization accounts */}
-        {profile?.base_structure === "organization" ? (
+        {/* Only show for Organization and Associate accounts */}
+        {(profile?.base_structure === "organization" || profile?.base_structure === "associate") ? (
           <>
             {/* Earnings Summary */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

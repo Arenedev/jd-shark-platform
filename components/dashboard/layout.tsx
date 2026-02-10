@@ -58,12 +58,14 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             icon="📈"
             isActive={pathname.includes("/investments")}
           />
-          <NavLink
-            href="/dashboard/network"
-            label="Network & Ranks"
-            icon="🏆"
-            isActive={pathname.includes("/network")}
-          />
+          {profile?.base_structure === "associate" && (
+            <NavLink
+              href="/dashboard/network"
+              label="Network & Ranks"
+              icon="🏆"
+              isActive={pathname.includes("/network")}
+            />
+          )}
           {profile?.base_structure === "organization" && (
             <NavLink
               href="/dashboard/loans"
@@ -72,8 +74,13 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               isActive={pathname.includes("/loans")}
             />
           )}
-          {profile?.base_structure !== "organization" && (
-            <NavLink href="/dashboard/referrals" label="Referrals" icon="👥" isActive={pathname.includes("/referrals")} />
+          {(profile?.base_structure === "associate" || profile?.base_structure === "organization") && (
+            <NavLink
+              href="/dashboard/referrals"
+              label="Referrals"
+              icon="👥"
+              isActive={pathname.includes("/referrals")}
+            />
           )}
           <NavLink href="/dashboard/settings" label="Settings" icon="⚙️" isActive={pathname.includes("/settings")} />
           {profile?.is_admin && (
@@ -148,13 +155,15 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               isActive={pathname.includes("/investments")}
               onClick={() => setMobileMenuOpen(false)}
             />
-            <NavLink
-              href="/dashboard/network"
-              label="Network & Ranks"
-              icon="🏆"
-              isActive={pathname.includes("/network")}
-              onClick={() => setMobileMenuOpen(false)}
-            />
+            {profile?.base_structure === "associate" && (
+              <NavLink
+                href="/dashboard/network"
+                label="Network & Ranks"
+                icon="🏆"
+                isActive={pathname.includes("/network")}
+                onClick={() => setMobileMenuOpen(false)}
+              />
+            )}
             {profile?.base_structure === "organization" && (
               <NavLink
                 href="/dashboard/loans"
@@ -164,7 +173,7 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
                 onClick={() => setMobileMenuOpen(false)}
               />
             )}
-            {profile?.base_structure !== "organization" && (
+            {(profile?.base_structure === "associate" || profile?.base_structure === "organization") && (
               <NavLink
                 href="/dashboard/referrals"
                 label="Referrals"
