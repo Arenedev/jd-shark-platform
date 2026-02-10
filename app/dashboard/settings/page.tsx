@@ -338,7 +338,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {!hasReferrer && (
+        {profile?.base_structure === "organization" && !hasReferrer && (
           <Card className="animate-fade-in-up border-primary/20" style={{ animationDelay: "0.05s" }}>
             <CardHeader>
               <CardTitle>Referral Code</CardTitle>
@@ -404,7 +404,7 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {hasReferrer && (
+        {profile?.base_structure === "organization" && hasReferrer && (
           <Card className="animate-fade-in-up border-green-600/20" style={{ animationDelay: "0.05s" }}>
             <CardHeader>
               <CardTitle>Referral Status</CardTitle>
