@@ -335,7 +335,7 @@ function NewInvestmentContent({ searchParams, router }: any) {
                   disabled={submitting}
                   className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground"
                 >
-                  <option value="1_year">1 Year Lock (15% ROI/month)</option>
+                  <option value="1_year">1 Year Lock</option>
                 </select>
                 <p className="text-xs text-muted-foreground">Lock your investment for 1 year to earn monthly returns</p>
               </div>
