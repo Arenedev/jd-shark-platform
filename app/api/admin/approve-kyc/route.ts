@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`[v0] Admin: ${status === "approved" ? "Approving" : "Rejecting"} KYC for user:`, userId)
 
-    // Update profile with KYC status
+    // Update profile with KYC status - mark profile as complete
     const { data, error } = await supabase
       .from("profiles")
       .update({
-        kyc_status: status,
+        profile_complete: status === "approved",
       })
       .eq("id", userId)
       .select()

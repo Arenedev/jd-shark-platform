@@ -35,17 +35,15 @@ export async function POST(request: NextRequest) {
 
     const reference = `DEP-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
 
-    // Create deposit request
+    // Create deposit request using the deposits table
     const { data: depositRequest, error: depositError } = await supabase
-      .from("deposit_requests")
+      .from("deposits")
       .insert({
         user_id: userId,
-        wallet_id: wallet.id,
         amount,
         payment_method: paymentMethod,
-        payment_proof_url: paymentProofUrl || null,
-        status: "pending",
         transaction_reference: reference,
+        status: "pending",
       })
       .select()
       .single()

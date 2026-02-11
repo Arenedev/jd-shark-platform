@@ -69,14 +69,11 @@ export async function POST(request: NextRequest) {
     const { error: updateError, data: updateData } = await supabase
       .from("profiles")
       .update({
-        nin_or_bvn: kycData.nin_or_bvn || null,
-        phone: kycData.phone || null,
+        phone_number: kycData.phone || null,
         country: kycData.country || null,
-        bank_name: kycData.bank_name || null,
-        bank_account_number: kycData.bank_account_number || null,
-        bank_account_name: kycData.bank_account_name || null,
-        kyc_document_url: publicUrl,
-        kyc_status: "pending",
+        address: kycData.address || null,
+        state: kycData.state || null,
+        postal_code: kycData.postal_code || null,
       })
       .eq("id", userId)
 

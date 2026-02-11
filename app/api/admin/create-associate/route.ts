@@ -38,8 +38,11 @@ export async function POST(request: NextRequest) {
         id: authData.user.id,
         email,
         full_name: fullName,
-        phone: phone || null,
+        phone_number: phone || null,
         base_structure: "associate",
+        rank: "bronze",
+        current_rank: "bronze",
+        is_admin: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
