@@ -14,7 +14,7 @@ import { createClient } from "@/lib/supabase/client"
 import { verifyReferralCode } from "@/lib/api/referrals"
 import { Loader2, Mail, Lock, User, Sparkles, UserCheck, Building2, Users, Briefcase, Eye, EyeOff } from "lucide-react"
 
-type BaseStructure = "investor" | "organization" | "associate"
+type BaseStructure = "user" | "associate" | "senior_associate"
 
 function RegisterForm() {
   const router = useRouter()
@@ -263,47 +263,23 @@ function RegisterForm() {
                 onValueChange={(value) => handleBaseStructureSelect(value as BaseStructure)}
                 className="space-y-3"
               >
-                {/* Investor Option */}
+                {/* User Option */}
                 <div
                   className={`relative flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
-                    formData.baseStructure === "investor"
+                    formData.baseStructure === "user"
                       ? "border-[#5dade2] bg-[#5dade2]/10"
                       : "border-[#1e3a5f] hover:border-[#5dade2]/50"
                   }`}
-                  onClick={() => handleBaseStructureSelect("investor")}
+                  onClick={() => handleBaseStructureSelect("user")}
                 >
-                  <RadioGroupItem value="investor" id="investor" className="mt-1" />
+                  <RadioGroupItem value="user" id="user" className="mt-1" />
                   <div className="flex-1">
-                    <Label htmlFor="investor" className="text-white font-medium flex items-center gap-2 cursor-pointer">
-                      <Briefcase className="w-4 h-4 text-[#5dade2]" />
-                      Investor
+                    <Label htmlFor="user" className="text-white font-medium flex items-center gap-2 cursor-pointer">
+                      <User className="w-4 h-4 text-[#5dade2]" />
+                      User
                     </Label>
                     <p className="text-xs text-[#a8b2c1] mt-1">
-                      Personal investment account. Earn 7-8% PA based on tier. No referral system.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Organization Option */}
-                <div
-                  className={`relative flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
-                    formData.baseStructure === "organization"
-                      ? "border-[#5dade2] bg-[#5dade2]/10"
-                      : "border-[#1e3a5f] hover:border-[#5dade2]/50"
-                  }`}
-                  onClick={() => handleBaseStructureSelect("organization")}
-                >
-                  <RadioGroupItem value="organization" id="organization" className="mt-1" />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor="organization"
-                      className="text-white font-medium flex items-center gap-2 cursor-pointer"
-                    >
-                      <Building2 className="w-4 h-4 text-[#d4a574]" />
-                      Organization
-                    </Label>
-                    <p className="text-xs text-[#a8b2c1] mt-1">
-                      Corporate account. Earn 8-9% PA. Loan access up to 80%. 1% referral commission.
+                      Standard user account. Access to investments and basic features.
                     </p>
                   </div>
                 </div>
@@ -327,15 +303,39 @@ function RegisterForm() {
                       Associate
                     </Label>
                     <p className="text-xs text-[#a8b2c1] mt-1">
-                      Network builder. Earn from PC + network commissions. Rank progression.{" "}
+                      Network builder. Earn from network commissions and rank progression.{" "}
                       <span className="text-[#d4a574]">Referral required.</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Senior Associate Option */}
+                <div
+                  className={`relative flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
+                    formData.baseStructure === "senior_associate"
+                      ? "border-[#5dade2] bg-[#5dade2]/10"
+                      : "border-[#1e3a5f] hover:border-[#5dade2]/50"
+                  }`}
+                  onClick={() => handleBaseStructureSelect("senior_associate")}
+                >
+                  <RadioGroupItem value="senior_associate" id="senior_associate" className="mt-1" />
+                  <div className="flex-1">
+                    <Label
+                      htmlFor="senior_associate"
+                      className="text-white font-medium flex items-center gap-2 cursor-pointer"
+                    >
+                      <Briefcase className="w-4 h-4 text-[#d4a574]" />
+                      Senior Associate
+                    </Label>
+                    <p className="text-xs text-[#a8b2c1] mt-1">
+                      Premium account with enhanced commissions and leadership features.
                     </p>
                   </div>
                 </div>
               </RadioGroup>
 
-              {/* Referral Code - Only show for Organization and Associate */}
-              {formData.baseStructure !== "investor" && (
+              {/* Referral Code - Only show for Associate and Senior Associate */}
+              {(formData.baseStructure === "associate" || formData.baseStructure === "senior_associate") && (
                 <div className="space-y-2 pt-2">
                   <Label htmlFor="referralCode" className="text-[#a8b2c1] flex items-center gap-2">
                     <UserCheck className="w-4 h-4" />
