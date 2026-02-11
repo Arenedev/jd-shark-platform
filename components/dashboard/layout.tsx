@@ -58,6 +58,12 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
             icon="📈"
             isActive={pathname.includes("/investments")}
           />
+          <NavLink
+            href="/dashboard/lcr"
+            label="LCR Investments"
+            icon="🔒"
+            isActive={pathname.includes("/lcr")}
+          />
           {profile?.base_structure === "associate" && (
             <NavLink
               href="/dashboard/network"
@@ -153,6 +159,13 @@ export default function DashboardLayout({ children, profile }: DashboardLayoutPr
               label="Investments"
               icon="📈"
               isActive={pathname.includes("/investments")}
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <NavLink
+              href="/dashboard/lcr"
+              label="LCR Investments"
+              icon="🔒"
+              isActive={pathname.includes("/lcr")}
               onClick={() => setMobileMenuOpen(false)}
             />
             {profile?.base_structure === "associate" && (
