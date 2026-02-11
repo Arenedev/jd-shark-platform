@@ -33,16 +33,18 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient(supabaseUrl, supabaseServiceKey)
 
     // Step 1: Check if profile already exists
-    const { data: existingProfile, error: checkError } = await supabase.from("profiles").select("id").eq("id", userId)
+    const { data: existingProfile, error: checkError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
 
-    if (checkError && checkError.code !== "PGRST116") {
-      console.error("[v0] Profile check error:", checkError)
-      return NextResponse.json({ message: "Failed to check profile" }, { status: 500 })
+    if (checkError) {
+      console.error("[v0] Profile check error:", checkError.message, checkError.code)
     }
 
     // Step 2: Create profile if it doesn't exist
     if (!existingProfile || existingProfile.length === 0) {
-      console.log("[v0] Creating profile with base_structure:", userBaseStructure)
+      console.log("[v0] Creating profile with:", { userId, email, fullName, userBaseStructure })
 
       const { error: profileError, data: profileData } = await supabase
         .from("profiles")
@@ -61,27 +63,28 @@ export async function POST(request: NextRequest) {
         .select()
 
       if (profileError) {
-        console.error("[v0] Profile creation error:", profileError)
+        console.error("[v0] Profile creation error details:", {
+          message: profileError.message,
+          code: profileError.code,
+          details: profileError.details,
+          hint: profileError.hint,
+        })
         if (profileError.code === "23505") {
           return NextResponse.json({ message: "This email is already registered" }, { status: 409 })
         }
         if (profileError.code === "23503") {
           return NextResponse.json({ message: "User authentication failed" }, { status: 500 })
         }
-        return NextResponse.json({ message: "Failed to create profile" }, { status: 500 })
+        return NextResponse.json({ message: `Failed to create profile: ${profileError.message}` }, { status: 500 })
       }
 
-      console.log("[v0] Profile created:", profileData)
+      console.log("[v0] Profile created successfully")
+    } else {
+      console.log("[v0] Profile already exists for user:", userId)
     }
 
-    // Step 3: Auto-confirm the user's email
-    const { error: updateAuthError } = await supabase.auth.admin.updateUserById(userId, {
-      email_confirm: true,
-    })
-
-    if (updateAuthError) {
-      console.error("[v0] Email confirmation error:", updateAuthError)
-    }
+    // Step 3: Note - Email confirmation is handled by Supabase Auth automatically
+    console.log("[v0] User created with email:", email)
 
     // Step 4: Create wallet with extended fields
     const { data: existingWallet, error: walletCheckError } = await supabase
@@ -89,12 +92,13 @@ export async function POST(request: NextRequest) {
       .select("id")
       .eq("user_id", userId)
 
-    if (walletCheckError && walletCheckError.code !== "PGRST116") {
-      console.error("[v0] Wallet check error:", walletCheckError)
-      return NextResponse.json({ message: "Failed to check wallet" }, { status: 500 })
+    if (walletCheckError) {
+      console.error("[v0] Wallet check error:", walletCheckError.message)
     }
 
     if (!existingWallet || existingWallet.length === 0) {
+      console.log("[v0] Creating wallet for user:", userId)
+
       const { error: walletError } = await supabase
         .from("wallets")
         .insert({
@@ -109,12 +113,20 @@ export async function POST(request: NextRequest) {
         .select()
 
       if (walletError) {
-        console.error("[v0] Wallet creation error:", walletError)
+        console.error("[v0] Wallet creation error details:", {
+          message: walletError.message,
+          code: walletError.code,
+          details: walletError.details,
+        })
         if (walletError.code === "23503") {
           return NextResponse.json({ message: "Profile not found - wallet creation failed" }, { status: 500 })
         }
-        return NextResponse.json({ message: "Failed to create wallet" }, { status: 500 })
+        return NextResponse.json({ message: `Failed to create wallet: ${walletError.message}` }, { status: 500 })
       }
+
+      console.log("[v0] Wallet created successfully for user:", userId)
+    } else {
+      console.log("[v0] Wallet already exists for user:", userId)
     }
 
     if (referrerId && referrerId !== userId) {
@@ -124,68 +136,32 @@ export async function POST(request: NextRequest) {
           .from("referrals")
           .select("id")
           .eq("referred_id", userId)
-          .single()
+          .maybeSingle()
 
         if (!existingReferral) {
-          let commissionRate = 10 // Default for associates
-          if (userBaseStructure === "organization") {
-            commissionRate = 1 // 1% for organization referrals
-          } else if (userBaseStructure === "investor") {
-            commissionRate = 0 // Investors don't earn from referrals
-          }
-
+          // Create referral relationship
           const { error: refError } = await supabase.from("referrals").insert({
             referrer_id: referrerId,
             referred_id: userId,
-            level: 1,
-            commission_rate: commissionRate,
+            status: "active",
           })
 
           if (refError) {
             console.error("[v0] Referral creation error:", refError)
-          }
-
-          if (userBaseStructure === "associate") {
-            // Get the referrer's referrer chain
-            const { data: referrerProfile } = await supabase
-              .from("profiles")
-              .select("referrer_id")
-              .eq("id", referrerId)
-              .single()
-
-            if (referrerProfile?.referrer_id) {
-              let currentReferrerId = referrerProfile.referrer_id
-              let level = 2
-
-              while (currentReferrerId && level <= 5) {
-                await supabase.from("referrals").insert({
-                  referrer_id: currentReferrerId,
-                  referred_id: userId,
-                  level: level,
-                  commission_rate: 0, // Commission calculated based on rank at earning time
-                })
-
-                // Get next level referrer
-                const { data: nextReferrer } = await supabase
-                  .from("profiles")
-                  .select("referrer_id")
-                  .eq("id", currentReferrerId)
-                  .single()
-
-                currentReferrerId = nextReferrer?.referrer_id
-                level++
-              }
-            }
+          } else {
+            console.log("[v0] Referral created successfully for user:", userId)
           }
         }
       } catch (refErr) {
         console.error("[v0] Referral processing error:", refErr)
+        // Non-blocking error - don't fail the entire registration
       }
     }
 
     return NextResponse.json({ message: "User data created successfully" }, { status: 200 })
   } catch (error) {
     console.error("[v0] API error:", error)
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Internal server error"
+    return NextResponse.json({ message: errorMessage }, { status: 500 })
   }
 }
