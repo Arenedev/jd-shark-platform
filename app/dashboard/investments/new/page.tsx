@@ -245,7 +245,7 @@ function NewInvestmentContent() {
       }
 
       setSuccess("Investment created successfully! Your investment is pending admin approval.")
-      setFormData({ amount: "", lock_type: "none", portfolio_id: "" })
+      setFormData({ amount: "", lock_type: "none", portfolio_id: "", start_date: "", auto_reinvest: false })
 
       // Redirect after 2 seconds
       setTimeout(() => {
@@ -421,7 +421,6 @@ function NewInvestmentContent() {
       </div>
     </DashboardLayout>
   )
-  }
 }
 
 export default function NewInvestmentPage() {
