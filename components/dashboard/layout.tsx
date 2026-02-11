@@ -14,7 +14,7 @@ interface DashboardLayoutProps {
   profile: Record<string, any> | null
 }
 
-export default function DashboardLayout({ children, profile }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, profile }: DashboardLayoutProps): React.ReactNode {
   const router = useRouter()
   const pathname = usePathname()
   const [loading, setLoading] = useState(false)
@@ -244,7 +244,7 @@ function NavLink({
   icon: string
   isActive: boolean
   onClick?: () => void
-}) {
+}): React.ReactNode {
   return (
     <Link
       href={href}

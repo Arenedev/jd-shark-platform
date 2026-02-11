@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Lock } from "lucide-react"
 
-export default function LCRInvestmentsPage() {
+export default function LCRInvestmentsPage(): React.ReactNode {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
