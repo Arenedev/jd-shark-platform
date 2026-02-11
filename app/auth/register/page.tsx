@@ -75,40 +75,12 @@ function RegisterForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-    
-    // Check email availability in real-time
-    if (name === "email" && value) {
-      checkEmailAvailability(value)
-    }
+    setEmailError(null) // Clear email error when user types
   }
 
   const checkEmailAvailability = async (email: string) => {
-    setCheckingEmail(true)
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("email", email)
-        .maybeSingle()
-
-      if (error) {
-        console.error("[v0] Email check error:", error)
-        setEmailError(null)
-        return
-      }
-
-      if (data) {
-        setEmailError("Email already registered. Please use a different email.")
-      } else {
-        setEmailError(null)
-      }
-    } catch (err) {
-      console.error("[v0] Email availability check error:", err)
-      setEmailError(null)
-    } finally {
-      setCheckingEmail(false)
-    }
+    // This function is kept for backward compatibility but no longer called
+    return
   }
 
   const handleBaseStructureSelect = (value: BaseStructure) => {
@@ -143,9 +115,10 @@ function RegisterForm() {
     setError(null)
     setSuccess(false)
 
-    // Check if email already exists
-    if (emailError) {
-      setError(emailError)
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError("Please enter a valid email address")
       return
     }
 
