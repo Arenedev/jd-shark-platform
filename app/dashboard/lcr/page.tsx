@@ -26,6 +26,7 @@ export default function LCRInvestmentsPage() {
   const [investments, setInvestments] = useState<any[]>([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [profile, setProfile] = useState<any>(null)
 
   useEffect(() => {
     checkAuth()
@@ -49,13 +50,15 @@ export default function LCRInvestmentsPage() {
       } = await supabase.auth.getUser()
       if (!user) return
 
-      const [walletResult, investmentsResult] = await Promise.all([
+      const [walletResult, investmentsResult, profileResult] = await Promise.all([
         supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
         supabase.from("lcr_investments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("profiles").select("*").eq("id", user.id).single(),
       ])
 
       setWalletBalance(walletResult.data?.balance || 0)
       setInvestments(investmentsResult.data || [])
+      setProfile(profileResult.data || null)
     } catch (error) {
       console.error("Error fetching LCR data:", error)
     } finally {
@@ -145,7 +148,7 @@ export default function LCRInvestmentsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout profile={profile}>
         <div className="flex items-center justify-center h-64">
           <div className="text-muted-foreground">Loading LCR investments...</div>
         </div>
@@ -154,7 +157,7 @@ export default function LCRInvestmentsPage() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout profile={profile}>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">LCR Investments</h1>
