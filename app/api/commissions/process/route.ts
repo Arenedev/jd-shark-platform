@@ -25,32 +25,60 @@ export async function POST(request: NextRequest) {
     const { period } = await request.json()
     const processingPeriod = period || new Date().toISOString().slice(0, 7) // YYYY-MM
 
-    // Call the database function to process commissions
-    const { data: runId, error: processError } = await supabase.rpc("process_monthly_commissions", {
-      p_period: processingPeriod,
-    })
+    // Get all pending commissions for the period
+    const { data: pendingCommissions, error: fetchError } = await supabase
+      .from("commissions")
+      .select("*")
+      .eq("status", "pending")
+      .gte("created_at", `${processingPeriod}-01`)
+      .lt("created_at", `${processingPeriod}-32`)
 
-    if (processError) {
-      console.error("[v0] Commission processing error:", processError)
+    if (fetchError) {
+      console.error("[v0] Fetch commissions error:", fetchError)
       return NextResponse.json(
-        { error: "Failed to process commissions", details: processError.message },
+        { error: "Failed to fetch commissions", details: fetchError.message },
         { status: 500 },
       )
     }
 
-    // Credit the pending commissions
-    const { data: creditedCount, error: creditError } = await supabase.rpc("credit_pending_commissions", {
-      p_period: processingPeriod,
-    })
+    if (!pendingCommissions || pendingCommissions.length === 0) {
+      return NextResponse.json({
+        success: true,
+        period: processingPeriod,
+        creditedCount: 0,
+        message: `No commissions to process for ${processingPeriod}`,
+      })
+    }
 
-    if (creditError) {
-      console.error("[v0] Commission crediting error:", creditError)
-      return NextResponse.json({ error: "Failed to credit commissions", details: creditError.message }, { status: 500 })
+    let creditedCount = 0
+
+    // Process each commission
+    for (const commission of pendingCommissions) {
+      // Update commission status
+      await supabase
+        .from("commissions")
+        .update({ status: "approved" })
+        .eq("id", commission.id)
+
+      // Credit user's wallet
+      const { data: wallet } = await supabase
+        .from("wallets")
+        .select("balance")
+        .eq("user_id", commission.user_id)
+        .single()
+
+      if (wallet) {
+        await supabase
+          .from("wallets")
+          .update({ balance: (wallet.balance || 0) + commission.amount })
+          .eq("user_id", commission.user_id)
+      }
+
+      creditedCount++
     }
 
     return NextResponse.json({
       success: true,
-      runId,
       period: processingPeriod,
       creditedCount,
       message: `Successfully processed and credited ${creditedCount} commissions for ${processingPeriod}`,

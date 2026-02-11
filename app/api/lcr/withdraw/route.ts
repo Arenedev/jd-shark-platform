@@ -67,9 +67,9 @@ export async function POST(request: NextRequest) {
     if (balanceError) throw balanceError
 
     // Create transaction record
-    await supabase.from("wallet_transactions").insert({
+    await supabase.from("transactions").insert({
       user_id: user.id,
-      type: "credit",
+      transaction_type: "lcr_withdrawal",
       amount: investment.final_amount,
       description: `LCR Investment matured (₦${investment.amount.toLocaleString()} + ₦${(investment.final_amount - investment.amount).toLocaleString()} bonus)`,
       status: "completed",

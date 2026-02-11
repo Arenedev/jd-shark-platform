@@ -5,39 +5,10 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceRoleClient()
 
-    // Fetch all loan repayment requests with loan and user details
+    // Fetch all loan repayments with loan and user details
     const { data: repayments, error } = await supabase
-      .from("loan_repayment_requests")
-      .select(
-        `
-        id,
-        loan_id,
-        user_id,
-        principal_amount,
-        interest_accrued,
-        total_repayment_amount,
-        status,
-        created_at,
-        requested_at,
-        organization_loans:loan_id (
-          id,
-          principal_amount,
-          interest_rate,
-          monthly_interest,
-          total_due,
-          repaid_amount,
-          status
-        ),
-        profiles:user_id (
-          id,
-          full_name,
-          email,
-          bank_name,
-          bank_account_name,
-          bank_account_number
-        )
-      `
-      )
+      .from("loan_repayments")
+      .select("*")
       .order("created_at", { ascending: false })
 
     if (error) {

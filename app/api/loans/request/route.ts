@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Get user profile to check eligibility
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("base_structure, personal_capital, full_name, email")
+      .select("base_structure, full_name, email")
       .eq("id", user.id)
       .single()
 
@@ -37,24 +37,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User profile not found" }, { status: 400 })
     }
 
-    if (profile.base_structure !== "organization") {
-      return NextResponse.json({ error: "Only Organizations are eligible for loans" }, { status: 400 })
-    }
-
-    const portfolio_value = profile.personal_capital || 0
-    const max_loan_amount = portfolio_value * 0.8
-    const min_loan_amount = portfolio_value * 0.5
-
-    if (amount > max_loan_amount) {
+    // Check if user is associate (eligible for loans)
+    if (profile.base_structure !== "associate") {
       return NextResponse.json(
-        { error: `Maximum loan amount is ₦${Math.floor(max_loan_amount).toLocaleString()}` },
+        { error: "Only associates are eligible for loans" },
         { status: 400 },
       )
     }
 
-    if (amount < min_loan_amount) {
+    // Check wallet balance as reference
+    const { data: wallet } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", user.id)
+      .single()
+
+    const availableBalance = wallet?.balance || 0
+    const maxLoanAmount = availableBalance * 0.8
+    const minLoanAmount = 10000 // Minimum loan amount
+
+    if (amount > maxLoanAmount && maxLoanAmount > 0) {
       return NextResponse.json(
-        { error: `Minimum loan amount is ₦${Math.floor(min_loan_amount).toLocaleString()} (50% of portfolio)` },
+        { error: `Maximum loan amount is ₦${Math.floor(maxLoanAmount).toLocaleString()}` },
+        { status: 400 },
+      )
+    }
+
+    if (amount < minLoanAmount) {
+      return NextResponse.json(
+        { error: `Minimum loan amount is ₦${minLoanAmount.toLocaleString()}` },
         { status: 400 },
       )
     }
@@ -63,19 +74,21 @@ export async function POST(request: NextRequest) {
     const monthlyRate = 0.005
     const months = 12
     const totalDue = amount * (1 + monthlyRate * months)
+    const dueDate = new Date()
+    dueDate.setMonth(dueDate.getMonth() + 12)
 
     console.log("[v0] Creating loan:", { userId: user.id, amount, totalDue })
 
-    // Create loan request
+    // Create loan request using the loans table
     const { data: loan, error: loanError } = await supabase
-      .from("organization_loans")
+      .from("loans")
       .insert({
         user_id: user.id,
-        principal_amount: amount,
-        monthly_interest_rate: 0.5,
-        total_due: totalDue,
-        status: "pending",
-        created_at: new Date().toISOString(),
+        amount,
+        interest_rate: 0.5,
+        tenure_months: 12,
+        status: "active",
+        due_date: dueDate.toISOString(),
       })
       .select()
       .single()

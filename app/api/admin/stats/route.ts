@@ -24,12 +24,11 @@ export async function GET() {
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("wallets").select("*"),
       supabase.from("investments").select("*"),
-      // Explicitly specify the foreign key relationship by selecting user data manually
       supabase
-        .from("deposit_requests")
+        .from("deposits")
         .select("*")
         .order("created_at", { ascending: false }),
-      supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("withdrawals").select("*").order("created_at", { ascending: false }),
     ])
 
     console.log("[v0] Users result:", usersResult.error || `${usersResult.data?.length} users`)

@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
 
     // Get withdrawal request
     const { data: withdrawal, error: fetchError } = await supabase
-      .from("withdrawal_requests")
-      .select("*, wallets(*)")
+      .from("withdrawals")
+      .select("*")
       .eq("id", withdrawalId)
       .single()
 
@@ -45,13 +45,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update withdrawal status
+    const now = new Date().toISOString()
     const { error: updateError } = await supabase
-      .from("withdrawal_requests")
+      .from("withdrawals")
       .update({
         status,
-        admin_note: adminNote,
-        approved_by: session.user.id,
-        approved_at: new Date().toISOString(),
+        approved_date: status === "approved" ? now : null,
+        completed_date: status === "approved" ? now : null,
+        updated_at: now,
       })
       .eq("id", withdrawalId)
 
@@ -61,51 +62,27 @@ export async function POST(request: NextRequest) {
     }
 
     if (status === "approved") {
-      // Check returns balance is sufficient
-      const currentReturnsBalance = withdrawal.wallets.returns_balance || 0
-
-      if (currentReturnsBalance < withdrawal.amount) {
-        return NextResponse.json(
-          {
-            error: "Insufficient returns balance. This should not happen - withdrawal was validated.",
-          },
-          { status: 400 },
-        )
-      }
-
-      // Deduct from returns_balance only (PC remains locked)
-      const { error: walletError } = await supabase
+      // Get wallet balance
+      const { data: wallet } = await supabase
         .from("wallets")
-        .update({
-          returns_balance: currentReturnsBalance - withdrawal.amount,
-          balance: withdrawal.wallets.balance - withdrawal.amount, // Also deduct from total balance
-          total_withdrawn: (withdrawal.wallets.total_withdrawn || 0) + withdrawal.amount,
-        })
-        .eq("id", withdrawal.wallet_id)
+        .select("*")
+        .eq("user_id", withdrawal.user_id)
+        .single()
 
-      if (walletError) {
-        console.error("[v0] Error updating wallet:", walletError)
-        return NextResponse.json({ error: "Failed to update wallet" }, { status: 500 })
-      }
+      if (wallet && wallet.balance >= withdrawal.amount) {
+        // Deduct from wallet balance
+        const { error: walletError } = await supabase
+          .from("wallets")
+          .update({
+            balance: wallet.balance - withdrawal.amount,
+            total_withdrawn: (wallet.total_withdrawn || 0) + withdrawal.amount,
+            updated_at: now,
+          })
+          .eq("id", wallet.id)
 
-      // Create transaction record
-      const { error: transactionError } = await supabase.from("wallet_transactions").insert({
-        wallet_id: withdrawal.wallet_id,
-        type: "withdrawal",
-        amount: withdrawal.amount,
-        status: "completed",
-        description: `Withdrawal from returns to ${withdrawal.bank_name} - ${withdrawal.account_number}`,
-        reference: `WD-${withdrawalId.substring(0, 8).toUpperCase()}`,
-        metadata: {
-          source: "returns",
-          bank_name: withdrawal.bank_name,
-          account_number: withdrawal.account_number,
-          account_name: withdrawal.account_name,
-        },
-      })
-
-      if (transactionError) {
-        console.error("[v0] Error creating transaction:", transactionError)
+        if (walletError) {
+          console.error("[v0] Error updating wallet:", walletError)
+        }
       }
     }
 

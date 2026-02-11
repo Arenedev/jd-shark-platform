@@ -74,9 +74,9 @@ export async function POST(request: NextRequest) {
     if (walletError) throw walletError
 
     // Create transaction record
-    await supabase.from("wallet_transactions").insert({
+    await supabase.from("transactions").insert({
       user_id: user.id,
-      type: "debit",
+      transaction_type: "lcr_investment",
       amount,
       description: `LCR Investment (${lockPeriodDays} days, ${bonusInterestRate}% bonus)`,
       status: "completed",

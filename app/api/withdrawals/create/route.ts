@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // Get user's wallet
     const { data: wallet, error: walletError } = await supabase
       .from("wallets")
-      .select("id, balance, returns_balance")
+      .select("id, balance")
       .eq("user_id", session.user.id)
       .single()
 
@@ -41,18 +41,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Wallet not found" }, { status: 404 })
     }
 
-    // Create withdrawal request (from returns only)
+    // Create withdrawal request
     const { data: withdrawal, error: withdrawalError } = await supabase
-      .from("withdrawal_requests")
+      .from("withdrawals")
       .insert({
         user_id: session.user.id,
-        wallet_id: wallet.id,
         amount,
         bank_name: bankName,
-        account_number: accountNumber,
-        account_name: accountName,
+        bank_account_number: accountNumber,
+        account_holder_name: accountName,
         status: "pending",
-        withdrawal_source: "returns", // Always from returns in Phase 2
+        request_date: new Date().toISOString(),
       })
       .select()
       .single()

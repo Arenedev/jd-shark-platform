@@ -67,13 +67,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create transaction record
-    const { error: transactionError } = await supabase.from("wallet_transactions").insert({
-      wallet_id: wallet.id,
-      type: "deposit",
+    const { error: transactionError } = await supabase.from("transactions").insert({
+      user_id: session.user.id,
+      transaction_type: "deposit",
       amount,
       status: "completed",
       description: "Wallet funding via Paystack",
-      reference,
+      reference_id: reference,
     })
 
     if (transactionError) {

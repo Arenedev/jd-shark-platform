@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from("withdrawal_requests")
+      .from("withdrawals")
       .select("*")
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false })
