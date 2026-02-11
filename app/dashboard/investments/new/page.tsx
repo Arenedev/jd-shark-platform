@@ -199,21 +199,17 @@ function NewInvestmentContent() {
         lcrBonus = formData.lock_type === "1_year" ? 5.0 : formData.lock_type === "10_year" ? 10.0 : 0
       }
 
-      // Create investment directly with all required fields
+      // Create investment directly with only the fields that exist in the database
       const { data: investment, error: investmentError } = await supabase
         .from("investments")
         .insert({
           portfolio_id: formData.portfolio_id,
           user_id: userId,
-          principal: amount,
           amount: amount,
           lock_type: formData.lock_type,
-          base_roi: baseRoi,
-          effective_roi: effectiveRoi,
-          lcr_bonus: lcrBonus,
-          status: "pending",
-          total_returns: 0,
-          returns_start_at: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          start_date: new Date().toISOString(),
+          auto_reinvest: formData.auto_reinvest,
+          status: "active",
         })
         .select()
 
@@ -244,7 +240,7 @@ function NewInvestmentContent() {
         console.log("[v0] Wallet updated successfully")
       }
 
-      setSuccess("Investment created successfully! Your investment is pending admin approval.")
+      setSuccess("Investment created successfully!")
       setFormData({ amount: "", lock_type: "none", portfolio_id: "", start_date: "", auto_reinvest: false })
 
       // Redirect after 2 seconds
