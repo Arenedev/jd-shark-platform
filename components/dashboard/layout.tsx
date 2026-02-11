@@ -11,7 +11,7 @@ import { Menu, X } from "lucide-react"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  profile: any
+  profile: Record<string, any> | null
 }
 
 export default function DashboardLayout({ children, profile }: DashboardLayoutProps) {

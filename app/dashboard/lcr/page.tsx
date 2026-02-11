@@ -26,7 +26,7 @@ export default function LCRInvestmentsPage() {
   const [investments, setInvestments] = useState<any[]>([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<Record<string, any> | null>(null)
 
   useEffect(() => {
     checkAuth()
